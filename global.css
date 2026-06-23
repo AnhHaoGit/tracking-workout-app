@@ -1,0 +1,65 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@import "nativewind/theme";
+
+
+@theme {
+  --color-background: #000000;
+  --color-primary: #181818;
+  --color-accent-1: #ff5050;
+  --color-accent-2: #ff9100;
+  --color-accent-3: #58c5cc;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #717171;
+
+
+  --spacing-0: 0px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-7: 28px;
+  --spacing-8: 32px;
+  --spacing-9: 36px;
+  --spacing-10: 40px;
+  --spacing-11: 44px;
+  --spacing-12: 48px;
+  --spacing-14: 56px;
+  --spacing-16: 64px;
+  --spacing-18: 72px;
+  --spacing-20: 80px;
+  --spacing-24: 96px;
+  --spacing-30: 120px;
+
+  --font-sans-black: "sans-black";
+  --font-sans-bold: "sans-bold";
+  --font-sans-heavy: "sans-heavy";
+  --font-sans-light: "sans-light";
+  --font-sans-medium: "sans-medium";
+  --font-sans-regular: "sans-regular";
+  --font-sans-semibold: "sans-semibold";
+  --font-sans-thin: "sans-thin";
+  --font-sans-ultralight: "sans-ultralight";
+}
+
+@layer components {
+  .tabs-icon {
+    @apply size-12 items-center justify-center;
+  }
+
+  .tabs-pill {
+    @apply size-12 items-center justify-center rounded-full bg-transparent;
+  }
+
+  .tabs-active {
+    @apply bg-text-primary;
+  }
+
+  .auth-input {
+    @apply rounded-full border-2 text-text-primary border-primary bg-background px-4 py-3 flex items-center justify-center font-sans-regular mt-2 text-xl;
+  }
+}
