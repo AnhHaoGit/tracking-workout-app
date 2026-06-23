@@ -1,14 +1,21 @@
 import {
-  GOOGLE_CLIENT_ID,
-  BASE_URL,
   APP_SCHEME,
+  BASE_URL,
   GOOGLE_AUTH_URL,
+  GOOGLE_CLIENT_ID,
 } from "../../constants/constants";
 
 export async function GET(request: Request) {
   if (!GOOGLE_CLIENT_ID) {
     return Response.json(
       { error: "Missing GOOGLE_CLIENT_ID environment variable" },
+      { status: 500 },
+    );
+  }
+
+  if (!BASE_URL || !APP_SCHEME) {
+    return Response.json(
+      { error: "Missing BASE_URL or APP_SCHEME environment variable" },
       { status: 500 },
     );
   }
@@ -30,8 +37,13 @@ export async function GET(request: Request) {
     return Response.json({ error: "Invalid redirect_uri" }, { status: 400 });
   }
 
+  const rawState = url.searchParams.get("state");
+  if (!rawState) {
+    return Response.json({ error: "Invalid state" }, { status: 400 });
+  }
+
   // use state to drive redirect back to platform
-  let state = platform + "|" + url.searchParams.get("state");
+  let state = platform + "|" + rawState;
 
   if (internalClient === "google") {
     idpClientId = GOOGLE_CLIENT_ID;

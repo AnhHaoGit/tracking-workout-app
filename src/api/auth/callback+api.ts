@@ -1,4 +1,4 @@
-import { BASE_URL, APP_SCHEME } from "../../constants/constants";
+import { APP_SCHEME, BASE_URL } from "../../constants/constants";
 
 export async function GET(request: Request) {
   const incomingParams = new URLSearchParams(request.url.split("?")[1]);
@@ -6,12 +6,22 @@ export async function GET(request: Request) {
   if (!combinedPlatformAndState) {
     return Response.json({ error: "Invalid state" }, { status: 400 });
   }
-  // strip platform to return state as it was set on the client
-  const platform = combinedPlatformAndState.split("|")[0];
-  const state = combinedPlatformAndState.split("|")[1];
+
+  const [platform, state] = combinedPlatformAndState.split("|");
+  if (!platform || !state) {
+    return Response.json({ error: "Invalid state format" }, { status: 400 });
+  }
+
+  const code = incomingParams.get("code");
+  if (!code) {
+    return Response.json(
+      { error: "Missing authorization code" },
+      { status: 400 },
+    );
+  }
 
   const outgoingParams = new URLSearchParams({
-    code: incomingParams.get("code")?.toString() || "",
+    code,
     state,
   });
 
