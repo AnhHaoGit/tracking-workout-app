@@ -3,7 +3,7 @@ import {
   BASE_URL,
   GOOGLE_AUTH_URL,
   GOOGLE_CLIENT_ID,
-} from "../../constants/constants";
+} from "../../../constants/constants";
 
 export async function GET(request: Request) {
   if (!GOOGLE_CLIENT_ID) {
@@ -26,6 +26,10 @@ export async function GET(request: Request) {
   const internalClient = url.searchParams.get("client_id");
 
   const redirectUri = url.searchParams.get("redirect_uri");
+
+  console.log("request.url:", request.url);
+  console.log("redirectUri:", redirectUri);
+  console.log("internalClient:", internalClient);
 
   let platform;
 
