@@ -59,13 +59,21 @@ export function withAuth<T extends Response>(
       }
 
       // Verify and decode the token
-      const decoded = await jose.jwtVerify(
+      const verified = await jose.jwtVerify(
         token,
         new TextEncoder().encode(jwtSecret), // jose requires you to encode the secret key manually
       );
 
+      const payload = verified.payload as AuthUser & { type?: string };
+      if (payload.type !== "access") {
+        return Response.json(
+          { error: "Access token required" },
+          { status: 401 },
+        );
+      }
+
       // Call the handler with the authenticated user
-      return await handler(req, decoded.payload as AuthUser);
+      return await handler(req, payload);
     } catch (error) {
       if (error instanceof jose.errors.JWTExpired) {
         console.error("Token expired:", error.reason);

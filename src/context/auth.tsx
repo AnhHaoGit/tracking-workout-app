@@ -1,18 +1,17 @@
-import * as React from "react";
-import * as WebBrowser from "expo-web-browser";
 import {
   AuthError,
   AuthRequestConfig,
-  useAuthRequest,
   DiscoveryDocument,
-  exchangeCodeAsync,
   makeRedirectUri,
+  useAuthRequest,
 } from "expo-auth-session";
-import { BASE_URL, TOKEN_KEY_NAME } from "../constants/constants";
-import { Platform } from "react-native";
-import * as jose from "jose";
-import { tokenCache } from "../utils/cache";
 import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import * as jose from "jose";
+import * as React from "react";
+import { Platform } from "react-native";
+import { BASE_URL, TOKEN_KEY_NAME } from "../constants/constants";
+import { tokenCache } from "../utils/cache";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -237,6 +236,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       return response;
     } else {
+      if (!accessToken) {
+        throw new Error("Missing access token");
+      }
+
       // For native: Use token in Authorization header
       const response = await fetch(url, {
         ...options,

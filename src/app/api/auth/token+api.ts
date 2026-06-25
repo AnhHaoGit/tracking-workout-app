@@ -1,17 +1,19 @@
 import * as jose from "jose";
 import {
+  COOKIE_MAX_AGE,
+  COOKIE_NAME,
+  COOKIE_OPTIONS,
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI,
-  COOKIE_NAME,
-  REFRESH_COOKIE_NAME,
-  COOKIE_MAX_AGE,
   JWT_EXPIRATION_TIME,
   JWT_SECRET,
-  COOKIE_OPTIONS,
   REFRESH_TOKEN_EXPIRY,
-  REFRESH_COOKIE_OPTIONS,
 } from "../../../constants/constants";
+
+const GOOGLE_JWKS = jose.createRemoteJWKSet(
+  new URL("https://www.googleapis.com/oauth2/v3/certs"),
+);
 
 export async function POST(request: Request) {
   const body = (await request.formData()) as any;
@@ -38,6 +40,20 @@ export async function POST(request: Request) {
   });
 
   const data = await response.json();
+  if (data.error) {
+    return Response.json(
+      {
+        error: data.error,
+        error_description: data.error_description,
+        message:
+          "OAuth validation error - please ensure the app complies with Google's OAuth 2.0 policy",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
   if (!data.id_token) {
     return Response.json(
       { error: "Missing required parameters" },
@@ -45,7 +61,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const userInfo = jose.decodeJwt(data.id_token) as object;
+  let userInfo: Record<string, unknown>;
+  try {
+    const verified = await jose.jwtVerify(data.id_token, GOOGLE_JWKS, {
+      issuer: ["https://accounts.google.com", "accounts.google.com"],
+      audience: GOOGLE_CLIENT_ID,
+    });
+    userInfo = verified.payload as Record<string, unknown>;
+  } catch (error) {
+    return Response.json({ error: "Invalid ID token" }, { status: 401 });
+  }
 
   // Create a new object without the exp property from the original token
   const { exp, ...userInfoWithoutExp } = userInfo as any;
@@ -60,44 +85,33 @@ export async function POST(request: Request) {
   const jti = crypto.randomUUID();
 
   // Create access token (short-lived)
-  const accessToken = await new jose.SignJWT(userInfoWithoutExp)
+  const accessToken = await new jose.SignJWT({
+    ...userInfoWithoutExp,
+    type: "access",
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(JWT_EXPIRATION_TIME)
     .setSubject(sub)
     .setIssuedAt(issuedAt)
     .sign(new TextEncoder().encode(JWT_SECRET));
 
-   const refreshToken = await new jose.SignJWT({
-     sub,
-     jti, // Include a unique ID for this refresh token
-     type: "refresh",
-     // Include all user information in the refresh token
-     // This ensures we have the data when refreshing tokens
-     name: (userInfo as any).name,
-     email: (userInfo as any).email,
-     picture: (userInfo as any).picture,
-     given_name: (userInfo as any).given_name,
-     family_name: (userInfo as any).family_name,
-     email_verified: (userInfo as any).email_verified,
-   })
-     .setProtectedHeader({ alg: "HS256" })
-     .setExpirationTime(REFRESH_TOKEN_EXPIRY)
-     .setIssuedAt(issuedAt)
-     .sign(new TextEncoder().encode(JWT_SECRET));
-
-   if (data.error) {
-     return Response.json(
-       {
-         error: data.error,
-         error_description: data.error_description,
-         message:
-           "OAuth validation error - please ensure the app complies with Google's OAuth 2.0 policy",
-       },
-       {
-         status: 400,
-       },
-     );
-   }
+  const refreshToken = await new jose.SignJWT({
+    sub,
+    jti, // Include a unique ID for this refresh token
+    type: "refresh",
+    // Include all user information in the refresh token
+    // This ensures we have the data when refreshing tokens
+    name: (userInfo as any).name,
+    email: (userInfo as any).email,
+    picture: (userInfo as any).picture,
+    given_name: (userInfo as any).given_name,
+    family_name: (userInfo as any).family_name,
+    email_verified: (userInfo as any).email_verified,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime(REFRESH_TOKEN_EXPIRY)
+    .setIssuedAt(issuedAt)
+    .sign(new TextEncoder().encode(JWT_SECRET));
 
   if (platform === "web") {
     // Create a response with the token in the body
@@ -118,16 +132,16 @@ export async function POST(request: Request) {
     );
 
     // Set the refresh token in a separate HTTP-only cookie
-    response.headers.append(
-      "Set-Cookie",
-      `${REFRESH_COOKIE_NAME}=${refreshToken}; Max-Age=${
-        REFRESH_COOKIE_OPTIONS.maxAge
-      }; Path=${REFRESH_COOKIE_OPTIONS.path}; ${
-        REFRESH_COOKIE_OPTIONS.httpOnly ? "HttpOnly;" : ""
-      } ${REFRESH_COOKIE_OPTIONS.secure ? "Secure;" : ""} SameSite=${
-        REFRESH_COOKIE_OPTIONS.sameSite
-      }`,
-    );
+    // response.headers.append(
+    //   "Set-Cookie",
+    //   `${REFRESH_COOKIE_NAME}=${refreshToken}; Max-Age=${
+    //     REFRESH_COOKIE_OPTIONS.maxAge
+    //   }; Path=${REFRESH_COOKIE_OPTIONS.path}; ${
+    //     REFRESH_COOKIE_OPTIONS.httpOnly ? "HttpOnly;" : ""
+    //   } ${REFRESH_COOKIE_OPTIONS.secure ? "Secure;" : ""} SameSite=${
+    //     REFRESH_COOKIE_OPTIONS.sameSite
+    //   }`,
+    // );
 
     return response;
   }

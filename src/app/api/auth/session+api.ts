@@ -1,5 +1,5 @@
 import * as jose from "jose";
-import { COOKIE_NAME, JWT_SECRET } from '../../../constants/constants';
+import { COOKIE_NAME, JWT_SECRET } from "../../../constants/constants";
 
 export async function GET(request: Request) {
   try {
@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     }
 
     // Parse cookies and their attributes
+    // Convert the cookie string into a structured object
     const cookies: Record<string, Record<string, string>> = {};
 
     cookieHeader.split(";").forEach((cookie) => {
@@ -61,19 +62,9 @@ export async function GET(request: Request) {
         new TextEncoder().encode(JWT_SECRET),
       );
 
-      // Calculate cookie expiration time
-      let cookieExpiration: number | null = null;
-
-      // If we have Max-Age, use it to calculate expiration
-      if (cookies[COOKIE_NAME].maxAge) {
-        const maxAge = parseInt(cookies[COOKIE_NAME].maxAge, 10);
-        // Calculate when the cookie will expire based on Max-Age
-        // We don't know exactly when it was set, but we can estimate
-        // using the token's iat (issued at) claim if available
-        const issuedAt =
-          (verified.payload.iat as number) || Math.floor(Date.now() / 1000);
-        cookieExpiration = issuedAt + maxAge;
-      }
+      // Calculate cookie expiration time from the verified token payload
+      const cookieExpiration =
+        typeof verified.payload.exp === "number" ? verified.payload.exp : null;
 
       // Return the user data from the token payload along with expiration info
       return Response.json({
