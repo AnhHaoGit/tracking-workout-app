@@ -3,7 +3,7 @@ import {
   BASE_URL,
   GOOGLE_AUTH_URL,
   GOOGLE_CLIENT_ID,
-} from "../../constants/constants";
+} from "../../../constants/constants";
 
 export async function GET(request: Request) {
   if (!GOOGLE_CLIENT_ID) {
@@ -27,12 +27,14 @@ export async function GET(request: Request) {
 
   const redirectUri = url.searchParams.get("redirect_uri");
 
+  console.log("request.url:", request.url);
+  console.log("redirectUri:", redirectUri);
+  console.log("internalClient:", internalClient);
+
   let platform;
 
   if (redirectUri === APP_SCHEME) {
     platform = "mobile";
-  } else if (redirectUri === BASE_URL) {
-    platform = "web";
   } else {
     return Response.json({ error: "Invalid redirect_uri" }, { status: 400 });
   }
