@@ -1,5 +1,5 @@
 import * as jose from "jose";
-import { COOKIE_NAME, JWT_SECRET } from "../constants/constants";
+import { JWT_SECRET } from "../constants/constants";
 import { AuthUser } from "../context/auth";
 
 /**
@@ -21,24 +21,6 @@ export function withAuth<T extends Response>(
         token = authHeader.split(" ")[1];
       }
 
-      // If no token in header, try to get from cookies (for web)
-      if (!token) {
-        const cookieHeader = req.headers.get("cookie");
-        if (cookieHeader) {
-          // Parse cookies
-          const cookies = cookieHeader.split(";").reduce(
-            (acc, cookie) => {
-              const [key, value] = cookie.trim().split("=");
-              acc[key.trim()] = value;
-              return acc;
-            },
-            {} as Record<string, string>,
-          );
-
-          // Get token from cookie
-          token = cookies[COOKIE_NAME];
-        }
-      }
 
       // If no token found in either place, return unauthorized
       if (!token) {

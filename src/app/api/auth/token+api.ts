@@ -1,8 +1,5 @@
 import * as jose from "jose";
 import {
-  COOKIE_MAX_AGE,
-  COOKIE_NAME,
-  COOKIE_OPTIONS,
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI,
@@ -10,6 +7,8 @@ import {
   JWT_SECRET,
   REFRESH_TOKEN_EXPIRY,
 } from "../../../constants/constants";
+import { connectToDatabase } from "../../../utils/connect-db";
+import { ObjectId } from "mongodb";
 
 const GOOGLE_JWKS = jose.createRemoteJWKSet(
   new URL("https://www.googleapis.com/oauth2/v3/certs"),
@@ -18,7 +17,6 @@ const GOOGLE_JWKS = jose.createRemoteJWKSet(
 export async function POST(request: Request) {
   const body = (await request.formData()) as any;
   const code = body.get("code") as string;
-  const platform = (body.get("platform") as string) || "native";
 
   if (!code) {
     return Response.json(
@@ -84,6 +82,11 @@ export async function POST(request: Request) {
   // Generate a unique jti (JWT ID) for the refresh token
   const jti = crypto.randomUUID();
 
+  if (!JWT_SECRET) {
+    return Response.json({ error: "Server misconfiguration" }, { status: 500 });
+  }
+  const jwtSecretBytes = new TextEncoder().encode(JWT_SECRET);
+
   // Create access token (short-lived)
   const accessToken = await new jose.SignJWT({
     ...userInfoWithoutExp,
@@ -93,62 +96,58 @@ export async function POST(request: Request) {
     .setExpirationTime(JWT_EXPIRATION_TIME)
     .setSubject(sub)
     .setIssuedAt(issuedAt)
-    .sign(new TextEncoder().encode(JWT_SECRET));
+    .sign(jwtSecretBytes);
 
-  const refreshToken = await new jose.SignJWT({
-    sub,
-    jti, // Include a unique ID for this refresh token
-    type: "refresh",
-    // Include all user information in the refresh token
-    // This ensures we have the data when refreshing tokens
-    name: (userInfo as any).name,
-    email: (userInfo as any).email,
-    picture: (userInfo as any).picture,
-    given_name: (userInfo as any).given_name,
-    family_name: (userInfo as any).family_name,
-    email_verified: (userInfo as any).email_verified,
-  })
-    .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime(REFRESH_TOKEN_EXPIRY)
-    .setIssuedAt(issuedAt)
-    .sign(new TextEncoder().encode(JWT_SECRET));
+  // const refreshToken = await new jose.SignJWT({
+  //   sub,
+  //   jti, // Include a unique ID for this refresh token
+  //   type: "refresh",
+  //   // Include all user information in the refresh token
+  //   // This ensures we have the data when refreshing tokens
+  //   name: (userInfo as any).name,
+  //   email: (userInfo as any).email,
+  //   picture: (userInfo as any).picture,
+  //   given_name: (userInfo as any).given_name,
+  //   family_name: (userInfo as any).family_name,
+  //   email_verified: (userInfo as any).email_verified,
+  // })
+  //   .setProtectedHeader({ alg: "HS256" })
+  //   .setExpirationTime(REFRESH_TOKEN_EXPIRY)
+  //   .setIssuedAt(issuedAt)
+  //   .sign(new TextEncoder().encode(JWT_SECRET));
 
-  if (platform === "web") {
-    // Create a response with the token in the body
-    const response = Response.json({
-      success: true,
-      issuedAt: issuedAt,
-      expiresAt: issuedAt + COOKIE_MAX_AGE,
-    });
+  const db = await connectToDatabase();
+  const usersCollection = db.collection("users");
+  const decoded = jose.decodeJwt(accessToken);
 
-    // Set the access token in an HTTP-only cookie
-    response.headers.set(
-      "Set-Cookie",
-      `${COOKIE_NAME}=${accessToken}; Max-Age=${COOKIE_OPTIONS.maxAge}; Path=${
-        COOKIE_OPTIONS.path
-      }; ${COOKIE_OPTIONS.httpOnly ? "HttpOnly;" : ""} ${
-        COOKIE_OPTIONS.secure ? "Secure;" : ""
-      } SameSite=${COOKIE_OPTIONS.sameSite}`,
-    );
+  try {
+    const existingUser = await usersCollection.findOne({ sub: decoded.sub });
 
-    // Set the refresh token in a separate HTTP-only cookie
-    // response.headers.append(
-    //   "Set-Cookie",
-    //   `${REFRESH_COOKIE_NAME}=${refreshToken}; Max-Age=${
-    //     REFRESH_COOKIE_OPTIONS.maxAge
-    //   }; Path=${REFRESH_COOKIE_OPTIONS.path}; ${
-    //     REFRESH_COOKIE_OPTIONS.httpOnly ? "HttpOnly;" : ""
-    //   } ${REFRESH_COOKIE_OPTIONS.secure ? "Secure;" : ""} SameSite=${
-    //     REFRESH_COOKIE_OPTIONS.sameSite
-    //   }`,
-    // );
-
-    return response;
+    if (!existingUser) {
+      const newUser = {
+        sub: decoded.sub,
+        email: decoded.email,
+        name: decoded.name,
+        picture: decoded.picture,
+        given_name: decoded.given_name,
+        family_name: decoded.family_name,
+        iat: decoded.iat,
+        exp: decoded.exp,
+      };
+      await usersCollection.insertOne(newUser);
+    } else {
+      usersCollection.updateOne(
+        { sub: decoded.sub },
+        { $set: { iat: decoded.iat, exp: decoded.exp } },
+      );
+    }
+  } catch (e) {
+    console.error("Error creating user:", e);
+    return Response.json({ error: "Cannot save user's data" }, { status: 500 });
   }
 
-  // For native platforms, return both tokens in the response body
   return Response.json({
     accessToken,
-    refreshToken,
+    // refreshToken,
   });
 }

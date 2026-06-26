@@ -1,7 +1,7 @@
 export const colors = {
   primary: "#181818",
   textPrimary: "#FFFFFF",
-  icon: "#000000",
+  iconColor: "#000000",
 } as const;
 
 export const spacing = {

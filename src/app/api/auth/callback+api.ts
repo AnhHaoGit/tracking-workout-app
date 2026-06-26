@@ -25,9 +25,5 @@ export async function GET(request: Request) {
     state,
   });
 
-  return Response.redirect(
-    (platform === "web" ? BASE_URL : APP_SCHEME) +
-      "?" +
-      outgoingParams.toString(),
-  );
+  return Response.redirect(APP_SCHEME + "?" + outgoingParams.toString());
 }

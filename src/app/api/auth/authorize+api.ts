@@ -35,8 +35,6 @@ export async function GET(request: Request) {
 
   if (redirectUri === APP_SCHEME) {
     platform = "mobile";
-  } else if (redirectUri === BASE_URL) {
-    platform = "web";
   } else {
     return Response.json({ error: "Invalid redirect_uri" }, { status: 400 });
   }

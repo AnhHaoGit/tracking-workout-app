@@ -1,25 +1,23 @@
 import { useRouter } from "expo-router";
 import { styled } from "nativewind";
 import React from "react";
-import { ActivityIndicator, Button, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View, Image } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../../context/auth";
-import { BASE_URL } from "@/constants/constants";
+import images from "@/constants/images";
+import { itemSize1 } from "@/constants/constants";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
 const HomeScreen = () => {
-  const { user, isLoading, signOut, fetchWithAuth } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
-  const [data, setData] = React.useState<any>(null);
 
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
       router.replace("/login");
     }
   }, [isLoading, user, router]);
-
-  console.log("user", user);
 
   if (isLoading) {
     return (
@@ -33,36 +31,53 @@ const HomeScreen = () => {
     return null;
   }
 
-  async function fetchProtectedData() {
-    try {
-      const response = await fetchWithAuth(`${BASE_URL}/api/protected/data`, {
-        method: "GET",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setData(data);
-        console.log("Protected data:", data);
-      } else {
-        console.error("Failed to fetch protected data:", response.status);
-      }
-    } catch (error) {
-      console.error("Error fetching protected data:", error);
-    }
-  }
+  // async function fetchProtectedData() {
+  //   try {
+  //     const response = await fetchWithAuth(`${BASE_URL}/api/protected/data`, {
+  //       method: "GET",
+  //     });
+  //     if (response.ok) {
+  //       const data = await response.json();
+  //       setData(data);
+  //       console.log("Protected data:", data);
+  //     } else {
+  //       console.error("Failed to fetch protected data:", response.status);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching protected data:", error);
+  //   }
+  // }
 
   return (
-    <SafeAreaView className="flex-1 justify-center items-center bg-background">
-      <Text className="font-sans-heavy text-5xl text-text-primary">
-        Home Screen
-      </Text>
-      <Text className="font-sans-regular text-lg text-text-primary">
-        Welcome back {user.name}!
-      </Text>
-      <Button title="Sign out" onPress={signOut} />
-      <Button title="Fetch Protected Data" onPress={fetchProtectedData} />
-      <Text className="font-sans-regular text-lg text-text-primary">
-        {data ? JSON.stringify(data) : "No data fetched yet."}
-      </Text>
+    <SafeAreaView className="flex-1 w-full bg-background">
+      <ScrollView
+        contentContainerStyle={{
+          paddingBottom: 180,
+          display: "flex",
+          backgroundColor: "#000000",
+          alignItems: "center",
+          flexGrow: 1,
+        }}
+      >
+        <View
+          className="h-1/7 w-full flex flex-row  justify-start items-center gap-4 "
+          style={{ width: itemSize1 }}
+        >
+          <View className="aspect-square h-9/10 flex justify-center items-center bg-background border-primary border-2 rounded-full">
+            <View className="w-9/10 h-9/10 flex justify-center items-center bg-primary border-2 rounded-full">
+              <Image source={images.avatar2} className="w-1/2 h-1/2" />
+            </View>
+          </View>
+          <View className="flex flex-col gap-1">
+            <Text className="font-sans-regular text-lg text-text-secondary">
+              Welcome back !
+            </Text>
+            <Text className="text-3xl font-sans-bold text-text-primary">
+              {user?.name}
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
