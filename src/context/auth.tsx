@@ -8,12 +8,16 @@ import {
 import { useRouter } from "expo-router";
 import * as jose from "jose";
 import * as React from "react";
-import { BASE_URL, TOKEN_KEY_NAME } from "../constants/constants";
+import {
+  BASE_URL,
+  TOKEN_KEY_NAME,
+  USER_KEY_NAME,
+} from "../constants/constants";
 import { tokenCache } from "../utils/cache";
-
+import { userCache } from "@/secure-store/user";
 
 export type AuthUser = {
-  id: string;
+  sub: string;
   email: string;
   name: string;
   picture?: string;
@@ -21,8 +25,9 @@ export type AuthUser = {
   family_name?: string;
   email_verified?: boolean;
   provider?: string;
+  iat?: number;
   exp?: number;
-  cookieExpiration?: number;
+  type?: string;
 };
 
 const AuthContext = React.createContext({
@@ -71,6 +76,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (exp && exp > now) {
               console.log("Access token is still valid, using it");
               setAccessToken(storedAccessToken);
+              userCache?.saveUserData(USER_KEY_NAME, decoded);
               setUser(decoded as AuthUser);
               router.replace("/(protected)/(tabs)");
             } else {
@@ -121,13 +127,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const token = await tokenResponse.json();
         const accessToken = token.accessToken;
+        console.log("accessToken", accessToken);
         setAccessToken(accessToken);
 
         tokenCache?.saveToken(TOKEN_KEY_NAME, accessToken);
 
-        console.log(accessToken);
-
         const decoded = jose.decodeJwt(accessToken);
+
         setUser(decoded as AuthUser);
         router.replace("/(protected)/(tabs)");
       } catch (e) {
@@ -141,7 +147,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signIn = async () => {
-    console.log("signIn");
     try {
       if (!request) {
         console.log("No request");
@@ -165,10 +170,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const fetchWithAuth = async (url: string, options: RequestInit) => {
-    if (!accessToken) {
-      throw new Error("Missing access token");
-    }
-
     // For native: Use token in Authorization header
     const response = await fetch(url, {
       ...options,

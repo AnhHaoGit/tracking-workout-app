@@ -8,7 +8,6 @@ import {
   REFRESH_TOKEN_EXPIRY,
 } from "../../../constants/constants";
 import { connectToDatabase } from "../../../utils/connect-db";
-import { ObjectId } from "mongodb";
 
 const GOOGLE_JWKS = jose.createRemoteJWKSet(
   new URL("https://www.googleapis.com/oauth2/v3/certs"),
