@@ -4,6 +4,7 @@ import { SplashScreen, Stack } from "expo-router";
 import { useEffect } from "react";
 import { StatusBar } from "react-native";
 import { AuthProvider } from "../context/auth";
+import { UserProvider } from "@/context/user";
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -30,12 +31,14 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        }}
-      />
+      <UserProvider>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+          }}
+        />
+      </UserProvider>
     </AuthProvider>
   );
 }

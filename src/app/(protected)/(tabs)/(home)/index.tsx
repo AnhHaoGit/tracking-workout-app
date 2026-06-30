@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { styled } from "nativewind";
 import React from "react";
 import {
@@ -10,33 +10,30 @@ import {
   Pressable,
 } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "../../../context/auth";
+import { useAuth } from "../../../../context/auth";
 import { itemSize1, USER_KEY_NAME } from "@/constants/constants";
 import { userCache } from "@/secure-store/user";
 import { BASE_URL } from "@/constants/constants";
 import { SymbolView } from "expo-symbols";
+import { useUser } from "@/context/user";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
 const HomeScreen = () => {
   const { user, isLoading, fetchWithAuth } = useAuth();
   const router = useRouter();
-  const [userData, setUserData] = React.useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const { userData, updateUserData } = useUser();
 
   React.useEffect(() => {
+    if (userData !== null) return;
     const fetchUserData = async () => {
       const response = await fetchWithAuth(`${BASE_URL}/api/database/user`, {
         method: "GET",
       });
-
       const data = await response.json();
-      setUserData(data);
+      updateUserData(data);
       userCache?.saveUserData(USER_KEY_NAME, data);
     };
-
     fetchUserData();
   }, [fetchWithAuth]);
 
@@ -45,6 +42,8 @@ const HomeScreen = () => {
       router.replace("/login");
     }
   }, [isLoading, user, router]);
+
+  console.log("user data context", userData);
 
   if (isLoading) {
     return (
@@ -108,14 +107,18 @@ const HomeScreen = () => {
               </Text>
             </View>
           </View>
-          <Pressable>
-            <SymbolView
-              name="plus"
-              tintColor="#ffffff"
-              weight="bold"
-              size={30}
-            />
-          </Pressable>
+          {userData !== null && userData.routine === "daily" && (
+            <Link href="/(protected)/(tabs)/(home)/add-workout-session" asChild>
+              <Pressable>
+                <SymbolView
+                  name="plus"
+                  tintColor="#ffffff"
+                  weight="bold"
+                  size={30}
+                />
+              </Pressable>
+            </Link>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

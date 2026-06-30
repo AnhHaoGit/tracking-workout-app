@@ -76,9 +76,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (exp && exp > now) {
               console.log("Access token is still valid, using it");
               setAccessToken(storedAccessToken);
-              userCache?.saveUserData(USER_KEY_NAME, decoded);
               setUser(decoded as AuthUser);
-              router.replace("/(protected)/(tabs)");
+              router.replace("/(protected)/(tabs)/(home)");
             } else {
               setUser(null);
               tokenCache?.deleteToken(TOKEN_KEY_NAME);
@@ -127,7 +126,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const token = await tokenResponse.json();
         const accessToken = token.accessToken;
-        console.log("accessToken", accessToken);
         setAccessToken(accessToken);
 
         tokenCache?.saveToken(TOKEN_KEY_NAME, accessToken);
@@ -135,7 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const decoded = jose.decodeJwt(accessToken);
 
         setUser(decoded as AuthUser);
-        router.replace("/(protected)/(tabs)");
+        router.replace("/(protected)/(tabs)/(home)");
       } catch (e) {
         console.log(e);
       } finally {

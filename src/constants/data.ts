@@ -1,5 +1,5 @@
 export const tabs: AppTab[] = [
-  { name: "index", title: "Home", symbol: "house.fill" },
+  { name: "(home)", title: "Home", symbol: "house.fill" },
   { name: "calendar", title: "Calendar", symbol: "calendar" },
   {
     name: "exercises",
