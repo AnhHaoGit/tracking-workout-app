@@ -9,20 +9,21 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-import ProfileOption from "../../../components/ProfileOption";
-import { USER_DATA, informationOptions } from "../../../constants/data";
-import images from "../../../constants/images";
+import ProfileOption from "../../../../components/ProfileOption";
+import { USER_DATA, informationOptions } from "../../../../constants/data";
+import images from "../../../../constants/images";
 import { SymbolView } from "expo-symbols";
-import InformationOption from "../../../components/InformationOption";
+import InformationOption from "../../../../components/InformationOption";
 import { SignOutButton } from "@/components/SignOutButton";
 import { itemSize1, itemSize2, itemSize3 } from "@/constants/constants";
-import { useAuth, } from "../../../context/auth";
+import { useAuth, } from "../../../../context/auth";
+
 
 const SafeAreaView = styled(RNSafeAreaView);
 const achievements = USER_DATA.achievements;
 const measurements = USER_DATA.measurements;
 
-const profile = () => {
+const ProfileScreen = () => {
   const { user } = useAuth();
   return (
     <SafeAreaView className="bg-background flex-1">
@@ -155,4 +156,4 @@ const profile = () => {
   );
 };
 
-export default profile;
+export default ProfileScreen;
