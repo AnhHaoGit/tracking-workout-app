@@ -11,13 +11,11 @@ import {
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import ProfileOption from "../../../../components/ProfileOption";
 import { USER_DATA, informationOptions } from "../../../../constants/data";
-import images from "../../../../constants/images";
 import { SymbolView } from "expo-symbols";
 import InformationOption from "../../../../components/InformationOption";
 import { SignOutButton } from "@/components/SignOutButton";
 import { itemSize1, itemSize2, itemSize3 } from "@/constants/constants";
-import { useAuth, } from "../../../../context/auth";
-
+import { useAuth } from "../../../../context/auth";
 
 const SafeAreaView = styled(RNSafeAreaView);
 const achievements = USER_DATA.achievements;
@@ -40,7 +38,7 @@ const ProfileScreen = () => {
         <View className="h-1/7 w-full flex items-center gap-4 ">
           <View className="aspect-square h-full flex justify-center items-center bg-background border-primary border-2 rounded-full">
             <View className="w-9/10 h-9/10 flex justify-center items-center bg-primary border-2 rounded-full">
-              <Image source={images.avatar2} className="w-1/2 h-1/2" />
+              <Image source={{ uri: user?.picture }} className="w-full h-full rounded-full" />
             </View>
           </View>
           <Text className="text-4xl font-sans-bold text-text-primary">

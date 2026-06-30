@@ -1,17 +1,44 @@
 import { useRouter } from "expo-router";
 import { styled } from "nativewind";
 import React from "react";
-import { ActivityIndicator, ScrollView, Text, View, Image } from "react-native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  View,
+  Image,
+  Pressable,
+} from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../../context/auth";
-import images from "@/constants/images";
-import { itemSize1 } from "@/constants/constants";
+import { itemSize1, USER_KEY_NAME } from "@/constants/constants";
+import { userCache } from "@/secure-store/user";
+import { BASE_URL } from "@/constants/constants";
+import { SymbolView } from "expo-symbols";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
 const HomeScreen = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, fetchWithAuth } = useAuth();
   const router = useRouter();
+  const [userData, setUserData] = React.useState<Record<
+    string,
+    unknown
+  > | null>(null);
+
+  React.useEffect(() => {
+    const fetchUserData = async () => {
+      const response = await fetchWithAuth(`${BASE_URL}/api/database/user`, {
+        method: "GET",
+      });
+
+      const data = await response.json();
+      setUserData(data);
+      userCache?.saveUserData(USER_KEY_NAME, data);
+    };
+
+    fetchUserData();
+  }, [fetchWithAuth]);
 
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
@@ -60,22 +87,35 @@ const HomeScreen = () => {
         }}
       >
         <View
-          className="h-1/7 w-full flex flex-row  justify-start items-center gap-4 "
+          className="h-1/7 w-full flex flex-row justify-between items-center"
           style={{ width: itemSize1 }}
         >
-          <View className="aspect-square h-9/10 flex justify-center items-center bg-background border-primary border-2 rounded-full">
-            <View className="w-9/10 h-9/10 flex justify-center items-center bg-primary border-2 rounded-full">
-              <Image source={images.avatar2} className="w-1/2 h-1/2" />
+          <View className="flex flex-row items-center gap-4">
+            <View className="aspect-square h-9/10 flex justify-center items-center bg-background border-primary border-2 rounded-full">
+              <View className="w-9/10 h-9/10 flex justify-center items-center bg-primary border-2 rounded-full">
+                <Image
+                  source={{ uri: user?.picture }}
+                  className="w-full h-full rounded-full"
+                />
+              </View>
+            </View>
+            <View className="flex flex-col gap-1">
+              <Text className="font-sans-regular text-lg text-text-secondary">
+                Welcome back !
+              </Text>
+              <Text className="text-3xl font-sans-bold text-text-primary">
+                {user?.name}
+              </Text>
             </View>
           </View>
-          <View className="flex flex-col gap-1">
-            <Text className="font-sans-regular text-lg text-text-secondary">
-              Welcome back !
-            </Text>
-            <Text className="text-3xl font-sans-bold text-text-primary">
-              {user?.name}
-            </Text>
-          </View>
+          <Pressable>
+            <SymbolView
+              name="plus"
+              tintColor="#ffffff"
+              weight="bold"
+              size={30}
+            />
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>

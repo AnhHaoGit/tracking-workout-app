@@ -1,4 +1,4 @@
-import { View, Text, Dimensions } from "react-native";
+import { View, Text, Dimensions, Pressable } from "react-native";
 import { SymbolView, SFSymbol } from "expo-symbols";
 import { Link } from "expo-router";
 
@@ -13,8 +13,8 @@ const ProfileOption = ({
   title: string;
 }) => {
   return (
-    <Link href="/(protected)/(tabs)/profile/edit-workout-routine">
-      <View
+    <Link href="/(protected)/(tabs)/profile/edit-workout-routine" asChild>
+      <Pressable
         style={{ width: MAX_WIDTH }}
         className="w-full bg-primary rounded-full flex flex-row justify-between items-center py-3 px-4 mt-5"
       >
@@ -30,7 +30,7 @@ const ProfileOption = ({
           </Text>
         </View>
         <SymbolView name="chevron.right" tintColor="#717171" size={15} />
-      </View>
+      </Pressable>
     </Link>
   );
 };
