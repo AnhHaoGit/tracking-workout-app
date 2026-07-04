@@ -5,34 +5,25 @@ import { Checkbox } from "expo-checkbox";
 import { SymbolView } from "expo-symbols";
 import * as React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { UserData, useUser } from "@/context/user";
 
 const EditWorkoutRoutine = () => {
-  const [isOnTheGoChecked, setOnTheGoChecked] = React.useState(true);
+  const [isOnTheGoChecked, setOnTheGoChecked] = React.useState(false);
   const [isWeeklyFixedChecked, setWeeklyFixedChecked] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const { fetchWithAuth, user } = useAuth();
-  const [userData, setUserData] = React.useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const { userData, updateUserData } = useUser();
 
   React.useEffect(() => {
-    const loadUserData = async () => {
-      const storedDataPromise = userCache?.getUserData(USER_KEY_NAME);
-      if (!storedDataPromise) {
-        return;
-      }
+    if (userData && userData.routine === "daily") {
+      setOnTheGoChecked(true);
+    } else if (userData && userData.routine === "weekly") {
+      setWeeklyFixedChecked(true);
+    } else {
+      setWeeklyFixedChecked(true);
+    }
+  }, [userData, setOnTheGoChecked, setWeeklyFixedChecked]);
 
-      const storedData = await storedDataPromise;
-      if (storedData) {
-        setUserData(JSON.parse(storedData));
-      }
-    };
-
-    loadUserData();
-  }, []);
-
-  console.log(userData);
 
   const handleCheckOnTheGo = (checked: boolean) => {
     setOnTheGoChecked(checked);
@@ -68,8 +59,9 @@ const EditWorkoutRoutine = () => {
 
       const data = await response.json();
       if (userData !== null) {
-        userData.routine = routine;
-        userCache?.saveUserData(USER_KEY_NAME, userData);
+        const updatedUserData = { ...userData, routine };
+        updateUserData(updatedUserData);
+        userCache?.saveUserData(USER_KEY_NAME, updatedUserData);
       }
 
       handleShowMessage(data.message);
