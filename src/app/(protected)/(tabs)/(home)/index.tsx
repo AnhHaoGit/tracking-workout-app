@@ -43,7 +43,7 @@ const HomeScreen = () => {
     }
   }, [isLoading, user, router]);
 
-  console.log("user data context", userData);
+
 
   if (isLoading) {
     return (

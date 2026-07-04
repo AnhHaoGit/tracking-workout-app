@@ -22,8 +22,6 @@ const UserContext = React.createContext({
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [userData, setUserData] = React.useState<UserData | null>(null);
 
-  
-
   const updateUserData = (data: UserData) => {
     setUserData(data);
   };

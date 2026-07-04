@@ -14,7 +14,6 @@ import {
   USER_KEY_NAME,
 } from "../constants/constants";
 import { tokenCache } from "../utils/cache";
-import { userCache } from "@/secure-store/user";
 
 export type AuthUser = {
   sub: string;

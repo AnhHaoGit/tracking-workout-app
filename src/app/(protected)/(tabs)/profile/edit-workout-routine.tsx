@@ -24,8 +24,6 @@ const EditWorkoutRoutine = () => {
     }
   }, [userData, setOnTheGoChecked, setWeeklyFixedChecked]);
 
-  console.log(isOnTheGoChecked);
-  console.log(isWeeklyFixedChecked);
 
   const handleCheckOnTheGo = (checked: boolean) => {
     setOnTheGoChecked(checked);
