@@ -1,0 +1,66 @@
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
+
+export type WorkoutExercise = {
+  id: number;
+  name: string;
+  targetMuscle: string;
+  secondaryMuscles: string[];
+  equipment: string[];
+  type: string;
+  img?: string;
+};
+
+export type WorkoutSession = {
+  _id: any;
+  name: string;
+  date: Date;
+  time: Date;
+  exercises: WorkoutExercise[];
+  createdAt: Date;
+  status: string
+};
+
+type WorkoutSessionCache = {
+  getWorkoutSessions: (key: string) => Promise<WorkoutSession[]>;
+  saveWorkoutSessions: (
+    key: string,
+    sessions: WorkoutSession[],
+  ) => Promise<void>;
+  addWorkoutSession: (
+    key: string,
+    session: WorkoutSession,
+  ) => Promise<WorkoutSession[]>;
+};
+
+const cache: WorkoutSessionCache | undefined =
+  Platform.OS !== "web"
+    ? {
+        getWorkoutSessions: async (key): Promise<WorkoutSession[]> => {
+          try {
+            const item = await SecureStore.getItemAsync(key);
+            if (!item) return [];
+            const parsed = JSON.parse(item) as WorkoutSession[];
+            return Array.isArray(parsed) ? parsed : [];
+          } catch (error) {
+            console.error(
+              "Failed to load workout sessions from secure store",
+              error,
+            );
+            return [];
+          }
+        },
+        saveWorkoutSessions: async (key, sessions: WorkoutSession[]) => {
+          await SecureStore.setItemAsync(key, JSON.stringify(sessions));
+        },
+        addWorkoutSession: async (key: string, session: WorkoutSession) => {
+          const store = cache as WorkoutSessionCache;
+          const current = await store.getWorkoutSessions(key);
+          const next = [session, ...current];
+          await store.saveWorkoutSessions(key, next);
+          return next;
+        },
+      }
+    : undefined;
+
+export const workoutSessionCache = cache;
