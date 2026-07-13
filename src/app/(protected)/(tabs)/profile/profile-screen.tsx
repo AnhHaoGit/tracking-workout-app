@@ -38,7 +38,10 @@ const ProfileScreen = () => {
         <View className="h-1/7 w-full flex items-center gap-4 ">
           <View className="aspect-square h-full flex justify-center items-center bg-background border-primary border-2 rounded-full">
             <View className="w-9/10 h-9/10 flex justify-center items-center bg-primary border-2 rounded-full">
-              <Image source={{ uri: user?.picture }} className="w-full h-full rounded-full" />
+              <Image
+                source={{ uri: user?.picture }}
+                className="w-full h-full rounded-full"
+              />
             </View>
           </View>
           <Text className="text-4xl font-sans-bold text-text-primary">
@@ -69,7 +72,11 @@ const ProfileScreen = () => {
           ))}
         </View>
 
-        <ProfileOption symbolName="medal.fill" title="Achievements" />
+        <ProfileOption
+          symbolName="medal.fill"
+          title="Achievements"
+          link="achievements"
+        />
 
         <View className="w-full flex flex-row justify-between px-5 mt-5">
           <View
@@ -103,11 +110,16 @@ const ProfileScreen = () => {
           </View>
         </View>
 
-        <ProfileOption symbolName="scalemass.fill" title="Measurements" />
+        <ProfileOption
+          symbolName="scalemass.fill"
+          title="Measurements"
+          link="measurements"
+        />
 
         <ProfileOption
           symbolName="calendar.badge.clock"
           title="Edit workout routine"
+          link="edit-workout-routine"
         />
 
         <View className="w-full flex-row justify-items-start px-5 mt-10">

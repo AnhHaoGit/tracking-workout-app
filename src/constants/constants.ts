@@ -3,6 +3,7 @@ import { Dimensions } from "react-native";
 // Authentication Constants
 export const TOKEN_KEY_NAME = "accessToken";
 export const USER_KEY_NAME = "userData";
+export const WORKOUT_SESSIONS_KEY_NAME = "workoutSessions";
 
 export const JWT_EXPIRATION_TIME = "30d"; // 30 days
 export const REFRESH_TOKEN_EXPIRY = "30d"; // 30 days

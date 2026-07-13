@@ -8,12 +8,14 @@ const MAX_WIDTH = width * 0.9;
 const ProfileOption = ({
   symbolName,
   title,
+  link,
 }: {
   symbolName: SFSymbol;
   title: string;
+  link: string;
 }) => {
   return (
-    <Link href="/(protected)/(tabs)/profile/edit-workout-routine" asChild>
+    <Link href={("/(protected)/(tabs)/profile/" + link) as any} asChild>
       <Pressable
         style={{ width: MAX_WIDTH }}
         className="w-full bg-primary rounded-full flex flex-row justify-between items-center py-3 px-4 mt-5"

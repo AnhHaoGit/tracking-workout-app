@@ -25,6 +25,22 @@ export default function ProfileLayout() {
             headerBackButtonDisplayMode: "minimal",
           }}
         />
+        <Stack.Screen
+          key="achievements"
+          name="achievements"
+          options={{
+            title: "",
+            headerBackButtonDisplayMode: "minimal",
+          }}
+        />
+        <Stack.Screen
+          key="measurements"
+          name="measurements"
+          options={{
+            title: "",
+            headerBackButtonDisplayMode: "minimal",
+          }}
+        />
       </Stack>
     </>
   );
