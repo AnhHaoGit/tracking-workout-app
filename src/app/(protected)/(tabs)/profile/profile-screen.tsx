@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import ProfileOption from "../../../../components/ProfileOption";
-import { USER_DATA, informationOptions } from "../../../../constants/data";
+import { USER_DATA, informationOptions } from "../../../../constants/constants";
 import { SymbolView } from "expo-symbols";
 import InformationOption from "../../../../components/InformationOption";
 import { SignOutButton } from "@/components/SignOutButton";

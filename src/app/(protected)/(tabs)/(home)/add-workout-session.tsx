@@ -1,14 +1,12 @@
 import { BASE_URL, WORKOUT_SESSIONS_KEY_NAME } from "@/constants/constants";
 import { EXERCISES } from "@/constants/exercises";
 import { useAuth } from "@/context/auth";
-import {
-  workoutSessionCache,
-  type WorkoutExercise,
-} from "@/secure-store/workout-sessions";
+import { WorkoutExercise } from "@/constants/type";
+import { workoutSessionCache } from "@/secure-store/workout-sessions";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { styled } from "nativewind";
+import { useWorkoutSessions } from "@/context/workout-sessions";
 
 import React from "react";
 import {
@@ -21,9 +19,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-
-const SafeAreaView = styled(RNSafeAreaView);
 
 const suggestedNames = [
   "Pull Day",
@@ -59,6 +54,7 @@ const AddWorkoutSession = () => {
   const [errorMessage, setErrorMessage] = React.useState("");
   const [date, setDate] = React.useState(new Date());
   const [time, setTime] = React.useState(new Date());
+  const { addWorkoutSession } = useWorkoutSessions();
 
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
@@ -189,18 +185,29 @@ const AddWorkoutSession = () => {
     };
 
     try {
-      await workoutSessionCache?.addWorkoutSession(
-        WORKOUT_SESSIONS_KEY_NAME,
-        session,
-      );
-      await fetchWithAuth(`${BASE_URL}/api/database/workout-sessions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await fetchWithAuth(
+        `${BASE_URL}/api/database/workout-sessions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(session),
         },
-        body: JSON.stringify(session),
-      });
-      router.replace("/(protected)/(tabs)/(home)");
+      );
+
+      if (res.ok) {
+        const finalSession = await res.json();
+
+        await workoutSessionCache?.addWorkoutSession(
+          WORKOUT_SESSIONS_KEY_NAME,
+          finalSession,
+        );
+
+        addWorkoutSession(finalSession);
+
+        router.replace("/(protected)/(tabs)/(home)");
+      }
     } catch (error) {
       console.error("Failed to create workout session", error);
       setErrorMessage(
@@ -563,24 +570,22 @@ const AddWorkoutSession = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView
-        className="flex-1 px-4 py-4"
-        contentContainerStyle={{ paddingBottom: 32 }}
-      >
-        <Text className="mb-2 font-sans-bold text-3xl text-text-primary">
-          Create workout session
-        </Text>
-        <Text className="mb-4 font-sans-regular text-base text-text-secondary">
-          Step {step} of 3
-        </Text>
-        {step === 1
-          ? renderStepOne()
-          : step === 2
-            ? renderStepTwo()
-            : renderStepThree()}
-      </ScrollView>
-    </SafeAreaView>
+    <ScrollView
+      className="flex-1 px-4 py-4 bg-background"
+      contentContainerStyle={{ paddingBottom: 120 }}
+    >
+      <Text className="mb-2 font-sans-bold text-3xl text-text-primary">
+        Create workout session
+      </Text>
+      <Text className="mb-4 font-sans-regular text-base text-text-secondary">
+        Step {step} of 3
+      </Text>
+      {step === 1
+        ? renderStepOne()
+        : step === 2
+          ? renderStepTwo()
+          : renderStepThree()}
+    </ScrollView>
   );
 };
 

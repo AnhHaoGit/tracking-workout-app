@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { StatusBar } from "react-native";
 import { AuthProvider } from "../context/auth";
 import { UserProvider } from "@/context/user";
+import { WorkoutSessionsProvider } from "@/context/workout-sessions";
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -32,12 +33,14 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <UserProvider>
-        <StatusBar barStyle="light-content" backgroundColor="#000000" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        />
+        <WorkoutSessionsProvider>
+          <StatusBar barStyle="light-content" backgroundColor="#000000" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+            }}
+          />
+        </WorkoutSessionsProvider>
       </UserProvider>
     </AuthProvider>
   );

@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-export default function ExercisesLayout() {
+export default function ProtectedLayout() {
   return (
     <>
       <Stack
@@ -11,15 +11,15 @@ export default function ExercisesLayout() {
         }}
       >
         <Stack.Screen
-          key="exercises-screen"
-          name="exercises-screen"
+          key="tabs"
+          name="(tabs)"
           options={{
             headerShown: false,
           }}
         />
         <Stack.Screen
-          key="exercise-detail"
-          name="[exerciseId]"
+          key="workout-session-detail"
+          name="[workoutSessionId]"
           options={{
             title: "",
             headerBackButtonDisplayMode: "minimal",
