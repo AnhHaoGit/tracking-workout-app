@@ -6,10 +6,7 @@ import {
 } from "@/constants/constants";
 import { useUser } from "@/context/user";
 import { userCache } from "@/secure-store/user";
-import {
-  WorkoutSession,
-  workoutSessionCache,
-} from "@/secure-store/workout-sessions";
+import { workoutSessionCache } from "@/secure-store/workout-sessions";
 import { Link, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { styled } from "nativewind";
@@ -24,6 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../../../context/auth";
+import { useWorkoutSessions } from "@/context/workout-sessions";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -31,7 +29,13 @@ const HomeScreen = () => {
   const { user, isLoading, fetchWithAuth } = useAuth();
   const router = useRouter();
   const { userData, updateUserData } = useUser();
-  const [sessions, setSessions] = React.useState<WorkoutSession[]>([]);
+  const { workoutSessions, saveWorkoutSessions } = useWorkoutSessions();
+
+  React.useLayoutEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/login");
+    }
+  }, [isLoading, user, router]);
 
   const todaySessions = React.useMemo(() => {
     const today = new Date();
@@ -46,7 +50,7 @@ const HomeScreen = () => {
       today.getDate() + 1,
     );
 
-    return sessions
+    return workoutSessions
       .filter((session) => {
         const sessionDate = new Date(session.date);
         return sessionDate >= startOfDay && sessionDate < endOfDay;
@@ -60,26 +64,35 @@ const HomeScreen = () => {
         if (dateA !== dateB) return dateA - dateB;
         return timeA - timeB;
       });
-  }, [sessions]);
+  }, [workoutSessions]);
 
   React.useEffect(() => {
-    if (userData !== null) return;
     const fetchUserData = async () => {
-      const response = await fetchWithAuth(`${BASE_URL}/api/database/user`, {
-        method: "GET",
-      });
-      const data = await response.json();
-      updateUserData(data);
-      userCache?.saveUserData(USER_KEY_NAME, data);
+      if (!user) return;
+      const cachedUserData = await userCache?.getUserData(USER_KEY_NAME);
+
+      if (cachedUserData) {
+        updateUserData(cachedUserData);
+      } else {
+        try {
+          const response = await fetchWithAuth(
+            `${BASE_URL}/api/database/user`,
+            {
+              method: "GET",
+            },
+          );
+          const data = await response.json();
+          console.log("data", data);
+          updateUserData(data);
+          userCache?.saveUserData(USER_KEY_NAME, data);
+        } catch (error) {
+          console.error("Failed to load user data", error);
+        }
+      }
     };
     fetchUserData();
   }, [fetchWithAuth]);
 
-  React.useLayoutEffect(() => {
-    if (!isLoading && !user) {
-      router.replace("/login");
-    }
-  }, [isLoading, user, router]);
   React.useEffect(() => {
     const loadSessions = async () => {
       if (!user) return;
@@ -87,29 +100,28 @@ const HomeScreen = () => {
       const cachedSessions = await workoutSessionCache?.getWorkoutSessions(
         WORKOUT_SESSIONS_KEY_NAME,
       );
-      if (cachedSessions && cachedSessions.length > 0) {
-        setSessions(cachedSessions);
-      }
 
-      try {
-        const response = await fetchWithAuth(
-          `${BASE_URL}/api/database/workout-sessions`,
-          {
-            method: "GET",
-          },
-        );
-        if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data)) {
-            setSessions(data);
+      if (cachedSessions) {
+        saveWorkoutSessions(cachedSessions);
+      } else {
+        try {
+          const response = await fetchWithAuth(
+            `${BASE_URL}/api/database/workout-sessions`,
+            {
+              method: "GET",
+            },
+          );
+          if (response.ok) {
+            const data = await response.json();
             await workoutSessionCache?.saveWorkoutSessions(
               WORKOUT_SESSIONS_KEY_NAME,
               data,
             );
+            saveWorkoutSessions(data);
           }
+        } catch (error) {
+          console.error("Failed to load workout sessions", error);
         }
-      } catch (error) {
-        console.error("Failed to load workout sessions", error);
       }
     };
 
@@ -161,7 +173,7 @@ const HomeScreen = () => {
               </Text>
             </View>
           </View>
-          {userData !== null && (
+          {userData?.routine === "daily" && (
             <Link href="/(protected)/(tabs)/(home)/add-workout-session" asChild>
               <Pressable>
                 <SymbolView
@@ -189,39 +201,43 @@ const HomeScreen = () => {
             </View>
           ) : (
             todaySessions.map((session) => (
-              <View
+              <Link
+                href={{
+                  pathname: "/(protected)/[workoutSessionId]",
+                  params: {
+                    workoutSessionId: session._id,
+                  },
+                }}
+                asChild
                 key={session._id}
                 className="flex flex-row items-center justify-between mb-3 rounded-3xl border-2 border-primary bg-background/80 p-4"
               >
-                <View>
-                  <Text className="font-sans-bold text-xl text-text-primary">
-                    {session.name}
-                  </Text>
-                  <Text className="mt-1 font-sans-regular text-sm text-text-secondary">
-                    {new Date(session.date).toLocaleDateString()} •{" "}
-                    {new Date(session.time).toLocaleTimeString()}
-                  </Text>
-                  <View className="mt-2 flex-row items-center justify-between gap-3">
-                    <Text className="font-sans-medium text-sm text-text-secondary">
-                      {session.exercises.length} exercise
-                      {session.exercises.length === 1 ? "" : "s"}
+                <Pressable>
+                  <View>
+                    <Text className="font-sans-bold text-xl text-text-primary">
+                      {session.name}
                     </Text>
-                    <View className="rounded-full border border-primary bg-primary/10 px-3 py-1">
-                      <Text className="font-sans-medium text-xs text-accent-2">
-                        {session.status ?? "Not started yet"}
+                    <Text className="mt-1 font-sans-regular text-sm text-text-secondary">
+                      {new Date(session.date).toLocaleDateString()} •{" "}
+                      {new Date(session.time).toLocaleTimeString()}
+                    </Text>
+                    <View className="mt-2 flex-row items-center justify-between gap-3">
+                      <Text className="font-sans-medium text-sm text-text-secondary">
+                        {session.exercises.length} exercise
+                        {session.exercises.length === 1 ? "" : "s"}
                       </Text>
+                      <View className="rounded-full border border-primary bg-primary/10 px-3 py-1">
+                        <Text className="font-sans-medium text-xs text-accent-2">
+                          {session.status ?? "Not started yet"}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-                <View className="bg-white p-2 rounded-full">
-                  <SymbolView
-                    name="arrow.right"
-                    tintColor="#000000"
-                    weight="bold"
-                    size={15}
-                  />
-                </View>
-              </View>
+                  <Pressable className="rounded-full border border-white flex items-center justify-center mr-2 p-1">
+                    <SymbolView name="multiply" tintColor="#ffffff" size={10} />
+                  </Pressable>
+                </Pressable>
+              </Link>
             ))
           )}
         </View>

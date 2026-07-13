@@ -8,26 +8,9 @@ import {
 import { useRouter } from "expo-router";
 import * as jose from "jose";
 import * as React from "react";
-import {
-  BASE_URL,
-  TOKEN_KEY_NAME,
-  USER_KEY_NAME,
-} from "../constants/constants";
+import { BASE_URL, TOKEN_KEY_NAME } from "../constants/constants";
 import { tokenCache } from "../utils/cache";
-
-export type AuthUser = {
-  sub: string;
-  email: string;
-  name: string;
-  picture?: string;
-  given_name?: string;
-  family_name?: string;
-  email_verified?: boolean;
-  provider?: string;
-  iat?: number;
-  exp?: number;
-  type?: string;
-};
+import { AuthUser } from "@/constants/type";
 
 const AuthContext = React.createContext({
   user: null as AuthUser | null,

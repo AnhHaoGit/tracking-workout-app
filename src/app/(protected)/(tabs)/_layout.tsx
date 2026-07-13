@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { tabs } from "@/constants/data";
+import { tabs } from "@/constants/constants";
 import { colors, components } from "@/constants/theme";
 import { SymbolView } from "expo-symbols";
 import { clsx } from "clsx";

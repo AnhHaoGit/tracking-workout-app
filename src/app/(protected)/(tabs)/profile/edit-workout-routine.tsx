@@ -5,7 +5,7 @@ import { Checkbox } from "expo-checkbox";
 import { SymbolView } from "expo-symbols";
 import * as React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { UserData, useUser } from "@/context/user";
+import { useUser } from "@/context/user";
 
 const EditWorkoutRoutine = () => {
   const [isOnTheGoChecked, setOnTheGoChecked] = React.useState(false);
@@ -23,7 +23,6 @@ const EditWorkoutRoutine = () => {
       setWeeklyFixedChecked(true);
     }
   }, [userData, setOnTheGoChecked, setWeeklyFixedChecked]);
-
 
   const handleCheckOnTheGo = (checked: boolean) => {
     setOnTheGoChecked(checked);

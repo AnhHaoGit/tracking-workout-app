@@ -1,18 +1,5 @@
 import * as React from "react";
-
-export type UserData = {
-  sub: string;
-  email: string;
-  name: string;
-  picture?: string;
-  given_name?: string;
-  family_name?: string;
-  email_verified?: boolean;
-  provider?: string;
-  iat?: number;
-  exp?: number;
-  routine?: string;
-};
+import { UserData } from "@/constants/type";
 
 const UserContext = React.createContext({
   userData: null as UserData | null,

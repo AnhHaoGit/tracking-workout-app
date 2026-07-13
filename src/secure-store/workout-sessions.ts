@@ -1,37 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
-export type WorkoutExercise = {
-  id: number;
-  name: string;
-  targetMuscle: string;
-  secondaryMuscles: string[];
-  equipment: string[];
-  type: string;
-  img?: string;
-};
-
-export type WorkoutSession = {
-  _id: any;
-  name: string;
-  date: Date;
-  time: Date;
-  exercises: WorkoutExercise[];
-  createdAt: Date;
-  status: string
-};
-
-type WorkoutSessionCache = {
-  getWorkoutSessions: (key: string) => Promise<WorkoutSession[]>;
-  saveWorkoutSessions: (
-    key: string,
-    sessions: WorkoutSession[],
-  ) => Promise<void>;
-  addWorkoutSession: (
-    key: string,
-    session: WorkoutSession,
-  ) => Promise<WorkoutSession[]>;
-};
+import { WorkoutSessionCache, WorkoutSession } from "@/constants/type";
 
 const cache: WorkoutSessionCache | undefined =
   Platform.OS !== "web"
