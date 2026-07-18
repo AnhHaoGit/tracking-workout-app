@@ -1,5 +1,6 @@
 import { connectToDatabase } from "@/utils/connect-db";
 import { withAuth } from "@/utils/middleware";
+import { ObjectId } from "mongodb";
 
 export const GET = withAuth(async (_req, user) => {
   try {
@@ -37,6 +38,41 @@ export const POST = withAuth(async (req, user) => {
     console.error("Error creating workout session:", error);
     return Response.json(
       { error: "Cannot create workout session" },
+      { status: 500 },
+    );
+  }
+});
+
+export const DELETE = withAuth(async (req, user) => {
+  try {
+    const body = await req.json();
+    const _id = body._id;
+    if (!_id) {
+      return Response.json({ error: "Missing _id" }, { status: 400 });
+    }
+    const db = await connectToDatabase();
+    const sessionsCollection = db.collection("workoutSessions");
+    const result = await sessionsCollection.deleteOne({
+      _id: new ObjectId(_id),
+      userId: user.sub,
+    });
+
+    if (result.deletedCount === 0) {
+      throw new Error("NOT_FOUND");
+    }
+
+    return Response.json({ success: true, _id }, { status: 200 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "NOT_FOUND") {
+      return Response.json(
+        { error: "Workout session not found" },
+        { status: 404 },
+      );
+    }
+
+    console.error("Error deleting workout session:", error);
+    return Response.json(
+      { error: "Cannot delete workout session" },
       { status: 500 },
     );
   }

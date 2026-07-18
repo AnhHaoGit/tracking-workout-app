@@ -6,6 +6,9 @@ export type WorkoutExercise = {
   equipment: string[];
   type: string;
   img?: string;
+  sets: { id: number; reps: string | null; weight: string | null }[];
+  note: string;
+  technique: null | string;
 };
 
 export type WorkoutSession = {
@@ -16,6 +19,8 @@ export type WorkoutSession = {
   exercises: WorkoutExercise[];
   createdAt: Date;
   status: string;
+  startAt: Date;
+  technique: string | null;
 };
 
 export type WorkoutSessionCache = {
@@ -28,6 +33,8 @@ export type WorkoutSessionCache = {
     key: string,
     session: WorkoutSession,
   ) => Promise<WorkoutSession[]>;
+  updateWorkoutSessions: (key: string, _id: string, data: any) => Promise<void>;
+  deleteWorkoutSession: (key: string, _id: string) => Promise<void>;
 };
 
 export type UserData = {

@@ -114,7 +114,13 @@ const AddWorkoutSession = () => {
       secondaryMuscles: exercise.secondaryMuscles,
       equipment: exercise.equipment,
       type: exercise.type,
-      img: exercise.img,
+      sets: [
+        { id: 1, weight: null, reps: null },
+        { id: 2, weight: null, reps: null },
+        { id: 3, weight: null, reps: null },
+      ],
+      note: "",
+      technique: null,
     }));
 
     setSelectedExercises((current) => {
@@ -182,6 +188,7 @@ const AddWorkoutSession = () => {
       exercises: selectedExercises,
       createdAt: new Date(),
       status: "Not started yet",
+      technique: null,
     };
 
     try {
@@ -416,7 +423,7 @@ const AddWorkoutSession = () => {
           disabled={isSaving}
         >
           <Text className="font-sans-semibold text-base text-background">
-            {isSaving ? "Saving..." : "Done!"}
+            {isSaving ? "Saving..." : "Done"}
           </Text>
         </Pressable>
       </View>

@@ -66,9 +66,12 @@ const isNotPickedClasses = "p-2 border-2 border-primary rounded-full";
 const Calendar = () => {
   const router = useRouter();
   const { user, isLoading, fetchWithAuth } = useAuth();
-  const { workoutSessions, saveWorkoutSessions } = useWorkoutSessions();
+  const { workoutSessions, saveWorkoutSessions, deleteWorkoutSession } =
+    useWorkoutSessions();
   const [isDisplayingListView, setIsDisplayingListView] =
     React.useState<boolean>(false);
+
+  const [errorMessage, setErrorMessage] = React.useState("");
 
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
@@ -78,6 +81,7 @@ const Calendar = () => {
 
   React.useEffect(() => {
     const loadSessions = async () => {
+      setErrorMessage("");
       if (!user) return;
 
       const cachedSessions = await workoutSessionCache?.getWorkoutSessions(
@@ -104,6 +108,9 @@ const Calendar = () => {
           }
         } catch (error) {
           console.error("Failed to load workout sessions", error);
+          setErrorMessage(
+            "Failed to load workout sessions. Check your Internet connection",
+          );
         }
       }
     };
@@ -147,6 +154,35 @@ const Calendar = () => {
 
   const screenWidth = Dimensions.get("window").width;
 
+  const handleDeleteWorkoutSession = async (_id: string) => {
+    setErrorMessage("");
+    try {
+      const res = await fetchWithAuth(
+        `${BASE_URL}/api/database/workout-sessions`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ _id }),
+        },
+      );
+
+      if (res.ok) {
+        deleteWorkoutSession(_id);
+        await workoutSessionCache?.deleteWorkoutSession(
+          WORKOUT_SESSIONS_KEY_NAME,
+          _id,
+        );
+      }
+    } catch (error) {
+      console.error("Failed to create workout session", error);
+      setErrorMessage(
+        "Failed to delete workout session. Check your Internet connection",
+      );
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerStyle={{ padding: 16 }}>
@@ -185,12 +221,19 @@ const Calendar = () => {
           </View>
         </View>
 
+        {errorMessage !== "" ? (
+          <Text className="mt-4 font-sans-regular text-sm text-accent-1">
+            {errorMessage}
+          </Text>
+        ) : null}
+
         {isDisplayingListView ? (
           <View className="mt-6">
             {workoutSessions.length === 0 ? (
               <View className="rounded-3xl border border-primary bg-background/70 p-4">
                 <Text className="font-sans-regular text-text-secondary">
-                  No workouts scheduled. Create one with the plus button.
+                  No workouts scheduled. Create one with the plus button in the
+                  home page.
                 </Text>
               </View>
             ) : (
@@ -220,14 +263,19 @@ const Calendar = () => {
                           {session.exercises.length} exercise
                           {session.exercises.length === 1 ? "" : "s"}
                         </Text>
-                        <View className="rounded-full border border-primary bg-primary/10 px-3 py-1">
-                          <Text className="font-sans-medium text-xs text-accent-2">
+                        <View className="rounded-full border border-primary bg-primary/10 px-3 py-1 flex items-center justify-center">
+                          <Text
+                            className={`font-sans-medium text-xs ${session.status === "Not started yet" && "text-accent-1"} ${session.status === "In progress" && "text-accent-2"}`}
+                          >
                             {session.status ?? "Not started yet"}
                           </Text>
                         </View>
                       </View>
                     </View>
-                    <Pressable className="rounded-full border border-white flex items-center justify-center mr-2 p-1">
+                    <Pressable
+                      onPress={() => handleDeleteWorkoutSession(session._id)}
+                      className="rounded-full border border-white flex items-center justify-center mr-2 p-1"
+                    >
                       <SymbolView
                         name="multiply"
                         tintColor="#ffffff"
@@ -293,26 +341,12 @@ const Calendar = () => {
                               {day ? (
                                 <View className="w-9 h-9 rounded-md items-center justify-center">
                                   {hasSession ? (
-                                    <Link
-                                      href={{
-                                        pathname:
-                                          "/(protected)/[workoutSessionId]",
-                                        params: {
-                                          workoutSessionId:
-                                            sessionsOnDay[0]._id,
-                                        },
-                                      }}
-                                      asChild
-                                    >
-                                      <Pressable>
-                                        <SymbolView
-                                          name="flame.fill"
-                                          tintColor="#ff9100"
-                                          weight="bold"
-                                          size={24}
-                                        />
-                                      </Pressable>
-                                    </Link>
+                                    <SymbolView
+                                      name="flame.fill"
+                                      tintColor="#ff9100"
+                                      weight="bold"
+                                      size={24}
+                                    />
                                   ) : (
                                     <Text className="font-sans-regular text-sm text-text-primary">
                                       {day.getDate()}
