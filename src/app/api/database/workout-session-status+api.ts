@@ -7,13 +7,14 @@ export const POST = withAuth(async (req, user) => {
     const body = await req.json();
     const _id = body._id;
     const status = body.status;
+    const startedAt = body.startedAt;
     const db = await connectToDatabase();
     const sessionsCollection = db.collection("workoutSessions");
 
     await sessionsCollection.updateOne(
       { _id: new ObjectId(_id), userId: user.sub },
       {
-        $set: { status: status },
+        $set: { status: status, startedAt: startedAt },
       },
     );
     return Response.json({ message: "Start the session successfully!" });

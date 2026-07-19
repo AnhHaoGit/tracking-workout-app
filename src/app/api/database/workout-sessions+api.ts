@@ -52,25 +52,13 @@ export const DELETE = withAuth(async (req, user) => {
     }
     const db = await connectToDatabase();
     const sessionsCollection = db.collection("workoutSessions");
-    const result = await sessionsCollection.deleteOne({
+    await sessionsCollection.deleteOne({
       _id: new ObjectId(_id),
       userId: user.sub,
     });
 
-    if (result.deletedCount === 0) {
-      throw new Error("NOT_FOUND");
-    }
-
     return Response.json({ success: true, _id }, { status: 200 });
   } catch (error) {
-    if (error instanceof Error && error.message === "NOT_FOUND") {
-      return Response.json(
-        { error: "Workout session not found" },
-        { status: 404 },
-      );
-    }
-
-    console.error("Error deleting workout session:", error);
     return Response.json(
       { error: "Cannot delete workout session" },
       { status: 500 },

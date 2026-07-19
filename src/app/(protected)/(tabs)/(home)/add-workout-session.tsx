@@ -119,8 +119,7 @@ const AddWorkoutSession = () => {
         { id: 2, weight: null, reps: null },
         { id: 3, weight: null, reps: null },
       ],
-      note: "",
-      technique: null,
+      img: exercise.img,
     }));
 
     setSelectedExercises((current) => {
@@ -188,7 +187,6 @@ const AddWorkoutSession = () => {
       exercises: selectedExercises,
       createdAt: new Date(),
       status: "Not started yet",
-      technique: null,
     };
 
     try {

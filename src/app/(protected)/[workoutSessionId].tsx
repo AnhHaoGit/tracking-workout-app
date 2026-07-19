@@ -32,6 +32,14 @@ const ExerciseDetailScreen = () => {
     message: string;
   } | null>(null);
 
+  React.useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(() => {
+      setMessage(null);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [message]);
+
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
       router.replace("/login");
@@ -69,6 +77,7 @@ const ExerciseDetailScreen = () => {
   }, [fetchWithAuth, user]);
 
   const handleChangeWorkoutSessionStatus = async (status: string) => {
+    const startedAt = new Date();
     try {
       const res = await fetchWithAuth(
         `${BASE_URL}/api/database/workout-session-status`,
@@ -77,7 +86,11 @@ const ExerciseDetailScreen = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ _id: params.workoutSessionId, status }),
+          body: JSON.stringify({
+            _id: params.workoutSessionId,
+            status,
+            startedAt,
+          }),
         },
       );
 
@@ -87,11 +100,11 @@ const ExerciseDetailScreen = () => {
             if (!prev) return prev;
             return { ...prev, status };
           });
-          updateWorkoutSessions(params.workoutSessionId, { status });
+          updateWorkoutSessions(params.workoutSessionId, { status, startedAt });
           await workoutSessionCache?.updateWorkoutSessions(
             WORKOUT_SESSIONS_KEY_NAME,
             params.workoutSessionId,
-            { status },
+            { status, startedAt },
           );
         }
       }
@@ -139,14 +152,22 @@ const ExerciseDetailScreen = () => {
   const handleChangeExerciseTechnique = (selectedTechnique: string) => {
     setSelectedWorkoutSession((prev) => {
       if (!prev) return prev;
-      return { ...prev, technique: selectedTechnique };
+      const updatedExercises = prev.exercises.map((exercise, idx) =>
+        idx !== exerciseIndex
+          ? exercise
+          : { ...exercise, technique: selectedTechnique },
+      );
+      return { ...prev, exercises: updatedExercises };
     });
   };
 
   const handleChangeExerciseNote = (note: string) => {
     setSelectedWorkoutSession((prev) => {
       if (!prev) return prev;
-      return { ...prev, note: note };
+      const updatedExercises = prev.exercises.map((exercise, idx) =>
+        idx !== exerciseIndex ? exercise : { ...exercise, note },
+      );
+      return { ...prev, exercises: updatedExercises };
     });
   };
 
@@ -191,6 +212,50 @@ const ExerciseDetailScreen = () => {
           ok: false,
           message:
             "Cannot save your workout session. Check your internet connection.",
+        });
+      }
+    }
+  };
+
+  const handleDeleteExercise = async (exerciseId: number) => {
+    try {
+      const res = await fetchWithAuth(
+        `${BASE_URL}/api/database/workout-session-exercise`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            _id: params.workoutSessionId,
+            exerciseId,
+          }),
+        },
+      );
+
+      if (res.ok) {
+        const response = await res.json();
+        if (params.workoutSessionId) {
+          updateWorkoutSessions(params.workoutSessionId, response.session);
+          await workoutSessionCache?.updateWorkoutSessions(
+            WORKOUT_SESSIONS_KEY_NAME,
+            params.workoutSessionId,
+            response.session,
+          );
+          setSelectedWorkoutSession(response.session);
+        }
+        setMessage({
+          ok: true,
+          message: "Delete exercise successfully!",
+        });
+      } else {
+        throw new Error();
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        setMessage({
+          ok: false,
+          message: "Cannot delete exercise. Check your internet connection.",
         });
       }
     }
@@ -275,7 +340,10 @@ const ExerciseDetailScreen = () => {
                     </Text>
                   </View>
                 </View>
-                <Pressable className="rounded-full border border-white flex items-center justify-center mr-2 p-1">
+                <Pressable
+                  onPress={() => handleDeleteExercise(exercise.id)}
+                  className="rounded-full border border-white flex items-center justify-center mr-2 p-1"
+                >
                   <SymbolView name="multiply" tintColor="#ffffff" size={10} />
                 </Pressable>
               </View>
@@ -286,6 +354,7 @@ const ExerciseDetailScreen = () => {
       {selectedWorkoutSession.status === "In progress" && (
         <View className="flex items-center gap-10 rounded-3xl border-2 border-primary bg-background/80 p-4">
           <Text className="text-text-primary font-sans-semibold">
+            {exerciseIndex + 1}.{" "}
             {selectedWorkoutSession.exercises[exerciseIndex].name}
           </Text>
 
@@ -296,9 +365,9 @@ const ExerciseDetailScreen = () => {
                 handleChangeExerciseTechnique(selectedItem);
               }}
               defaultValue={
-                !selectedWorkoutSession.technique
+                !selectedWorkoutSession.exercises[exerciseIndex].technique
                   ? null
-                  : selectedWorkoutSession.technique
+                  : selectedWorkoutSession.exercises[exerciseIndex].technique
               }
               renderButton={(selectedItem, isOpened) => {
                 return (
@@ -396,11 +465,11 @@ const ExerciseDetailScreen = () => {
 
           <View className="w-9/10">
             <TextInput
-              className="w-full text-white border-2 border-primary rounded-full p-2"
-              keyboardType="numeric"
+              className="w-full text-white border-2 border-primary rounded-2xl p-2"
               placeholderTextColor="#666"
               multiline={true}
               numberOfLines={4}
+              style={{ minHeight: 80, textAlignVertical: "top" }}
               placeholder="Add some note"
               value={selectedWorkoutSession.exercises[exerciseIndex].note ?? ""}
               onChangeText={(value) => handleChangeExerciseNote(value)}
