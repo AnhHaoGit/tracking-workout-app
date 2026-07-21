@@ -4,7 +4,7 @@ import { WorkoutSession } from "@/constants/type";
 const WorkoutSessionsContext = React.createContext({
   workoutSessions: [] as WorkoutSession[] | [],
   saveWorkoutSessions: (data: WorkoutSession[]) => {},
-  updateWorkoutSessions: (data: WorkoutSession) => {},
+  updateWorkoutSessions: (_id: string, data: any) => {},
   addWorkoutSession: (data: WorkoutSession) => {},
   deleteWorkoutSession: (_id: string) => {},
 });
@@ -22,14 +22,21 @@ export const WorkoutSessionsProvider = ({
     setWorkoutSessions(data);
   };
 
-  const updateWorkoutSessions = (data: WorkoutSession) => {};
+  const updateWorkoutSessions = (_id: string, data: any) => {
+    setWorkoutSessions((prev) =>
+      prev.map((session) =>
+        session._id === _id ? { ...session, ...data } : session,
+      ),
+    );
+  };
 
   const addWorkoutSession = (data: WorkoutSession) => {
     setWorkoutSessions((prev) => [...prev, data]);
   };
 
-  const deleteWorkoutSession = (_id: string) => {};
-
+  const deleteWorkoutSession = (_id: string) => {
+    setWorkoutSessions((prev) => prev.filter((session) => session._id !== _id));
+  };
   return (
     <WorkoutSessionsContext.Provider
       value={{

@@ -114,6 +114,11 @@ const AddWorkoutSession = () => {
       secondaryMuscles: exercise.secondaryMuscles,
       equipment: exercise.equipment,
       type: exercise.type,
+      sets: [
+        { id: 1, weight: null, reps: null },
+        { id: 2, weight: null, reps: null },
+        { id: 3, weight: null, reps: null },
+      ],
       img: exercise.img,
     }));
 
@@ -416,7 +421,7 @@ const AddWorkoutSession = () => {
           disabled={isSaving}
         >
           <Text className="font-sans-semibold text-base text-background">
-            {isSaving ? "Saving..." : "Done!"}
+            {isSaving ? "Saving..." : "Done"}
           </Text>
         </Pressable>
       </View>

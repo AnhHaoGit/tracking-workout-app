@@ -30,6 +30,22 @@ const cache: WorkoutSessionCache | undefined =
           await store.saveWorkoutSessions(key, next);
           return next;
         },
+        updateWorkoutSessions: async (key: string, _id: string, data: any) => {
+          const store = cache as WorkoutSessionCache;
+
+          const current = await store.getWorkoutSessions(key);
+          const next = current.map((session) =>
+            session._id === _id ? { ...session, ...data } : session,
+          );
+          await store.saveWorkoutSessions(key, next);
+        },
+        deleteWorkoutSession: async (key: string, _id: string) => {
+          const store = cache as WorkoutSessionCache;
+
+          const current = await store.getWorkoutSessions(key);
+          const next = current.filter((session) => session._id !== _id);
+          await store.saveWorkoutSessions(key, next);
+        },
       }
     : undefined;
 
