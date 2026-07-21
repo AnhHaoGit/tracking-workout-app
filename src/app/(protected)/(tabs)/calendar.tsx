@@ -174,12 +174,15 @@ const Calendar = () => {
           WORKOUT_SESSIONS_KEY_NAME,
           _id,
         );
+      } else {
+        throw new Error();
       }
     } catch (error) {
-      console.error("Failed to create workout session", error);
-      setErrorMessage(
-        "Failed to delete workout session. Check your Internet connection",
-      );
+      if (error instanceof Error) {
+        setErrorMessage(
+          "Cannot delete workout session. Check your internet connection.",
+        );
+      }
     }
   };
 

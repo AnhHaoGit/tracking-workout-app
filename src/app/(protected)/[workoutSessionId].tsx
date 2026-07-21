@@ -154,16 +154,38 @@ const ExerciseDetailScreen = () => {
             if (!prev) return prev;
             return { ...prev, status };
           });
-          updateWorkoutSessions(params.workoutSessionId, { status, startedAt });
-          await workoutSessionCache?.updateWorkoutSessions(
-            WORKOUT_SESSIONS_KEY_NAME,
-            params.workoutSessionId,
-            { status, startedAt },
-          );
+          if (status === "In progress") {
+            updateWorkoutSessions(params.workoutSessionId, {
+              status,
+              startedAt,
+            });
+            await workoutSessionCache?.updateWorkoutSessions(
+              WORKOUT_SESSIONS_KEY_NAME,
+              params.workoutSessionId,
+              { status, startedAt },
+            );
+          } else {
+            updateWorkoutSessions(params.workoutSessionId, {
+              status,
+            });
+            await workoutSessionCache?.updateWorkoutSessions(
+              WORKOUT_SESSIONS_KEY_NAME,
+              params.workoutSessionId,
+              { status },
+            );
+          }
         }
+      } else {
+        throw new Error();
       }
     } catch (error) {
-      console.error("Failed to create workout session", error);
+      if (error instanceof Error) {
+        setMessage({
+          ok: false,
+          message:
+            "Cannot change status of the workout session. Check your internet connection.",
+        });
+      }
     }
   };
 
@@ -179,7 +201,9 @@ const ExerciseDetailScreen = () => {
         return {
           ...exercise,
           sets: exercise.sets.map((set) =>
-            set.id === setId ? { ...set, [field]: Number(value) } : set,
+            set.id === setId
+              ? { ...set, [field]: value === "" ? null : Number(value) }
+              : set,
           ),
         };
       });
@@ -491,19 +515,22 @@ const ExerciseDetailScreen = () => {
         )}
       {selectedWorkoutSession.status === "In progress" &&
         selectedWorkoutSession.exercises.length > 0 && (
-          <View className="flex items-center gap-10 mb-3 rounded-3xl border-2 border-primary bg-background/80 p-4">
-            <View className="flex flex-row w-full justify-between items-center">
-              <View>
-                <Pressable>
-                  <SymbolView name="trash.fill" tintColor="#000000" size={20} />
-                </Pressable>
-              </View>
+          <View className="flex items-center mb-3 rounded-3xl border-2 border-primary bg-background/80 p-4">
+            <View className="flex flex-row w-full justify-between items-center mb-10">
               <Text className="text-center text-text-primary font-sans-bold text-xl">
                 {exerciseIndex + 1}.{" "}
                 {selectedWorkoutSession.exercises[exerciseIndex].name}
               </Text>
 
-              <View>
+              <View className="flex flex-row items-center gap-4 justify-center">
+                <Pressable>
+                  <SymbolView
+                    name="line.3.horizontal"
+                    tintColor="#ffffff"
+                    size={18}
+                    weight="bold"
+                  />
+                </Pressable>
                 <Pressable
                   onPress={() =>
                     handleDeleteExercise(
@@ -511,12 +538,88 @@ const ExerciseDetailScreen = () => {
                     )
                   }
                 >
-                  <SymbolView name="trash.fill" tintColor="#717171" size={20} />
+                  <SymbolView
+                    name="multiply"
+                    weight="bold"
+                    tintColor="#ffffff"
+                    size={18}
+                  />
                 </Pressable>
               </View>
             </View>
 
-            <View className="flex flex-row items-center justify-items-start w-full">
+            <View className="w-full flex items-center mb-5">
+              {/* Header */}
+              <View className="flex flex-row items-center mb-4">
+                <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
+                  Set
+                </Text>
+                <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
+                  Weight (kg)
+                </Text>
+                <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
+                  Reps
+                </Text>
+              </View>
+
+              {/* Rows */}
+              <ScrollView
+                className="w-full max-h-50"
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {selectedWorkoutSession.exercises[exerciseIndex].sets.map(
+                  (set, idx) => (
+                    <View
+                      key={set.id}
+                      className="flex flex-row items-center mb-2"
+                    >
+                      <Text className="flex-1 text-center text-white">
+                        {idx + 1}
+                      </Text>
+
+                      <View className="flex-1 items-center">
+                        <TextInput
+                          className="w-16 text-text-primary border-2 border-primary rounded-full py-2"
+                          keyboardType="numeric"
+                          placeholderTextColor="#666"
+                          value={set.weight?.toString() ?? ""}
+                          onChangeText={(value) =>
+                            handleSetValueChange(set.id, "weight", value)
+                          }
+                          style={{ textAlign: "center" }}
+                        />
+                      </View>
+
+                      <View className="flex-1 items-center">
+                        <TextInput
+                          className="w-16 text-white border-2 border-primary rounded-full py-2"
+                          keyboardType="numeric"
+                          placeholderTextColor="#666"
+                          value={set.reps?.toString() ?? ""}
+                          onChangeText={(value) =>
+                            handleSetValueChange(set.id, "reps", value)
+                          }
+                          style={{ textAlign: "center" }}
+                        />
+                      </View>
+                    </View>
+                  ),
+                )}
+              </ScrollView>
+
+              {/* Add set button */}
+              <Pressable
+                onPress={handleAddSet}
+                className="flex flex-row items-center justify-center gap-1 mt-2 rounded-full w-9/10  bg-primary py-2"
+              >
+                <SymbolView name="plus" tintColor="#717171" size={10} />
+                <Text className="text-text-secondary font-sans-semibold">
+                  Add new set
+                </Text>
+              </Pressable>
+            </View>
+            <View className="flex flex-row mb-5 items-center justify-items-start w-9/10">
               <SelectDropdown
                 data={TECHNIQUES}
                 onSelect={(selectedItem, index) => {
@@ -558,73 +661,7 @@ const ExerciseDetailScreen = () => {
                 dropdownStyle={styles.dropdownMenuStyle}
               />
             </View>
-            <View className="w-full flex items-center">
-              {/* Header */}
-              <View className="flex flex-row items-center mb-4">
-                <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
-                  Set
-                </Text>
-                <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
-                  Weight (kg)
-                </Text>
-                <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
-                  Reps
-                </Text>
-              </View>
-
-              {/* Rows */}
-              {selectedWorkoutSession.exercises[exerciseIndex].sets.map(
-                (set, idx) => (
-                  <View
-                    key={set.id}
-                    className="flex flex-row items-center mb-2"
-                  >
-                    <Text className="flex-1 text-center text-white">
-                      {idx + 1}
-                    </Text>
-
-                    <View className="flex-1 items-center">
-                      <TextInput
-                        className="w-16 text-text-primary border-2 border-primary rounded-full py-2"
-                        keyboardType="numeric"
-                        placeholderTextColor="#666"
-                        value={set.weight?.toString() ?? ""}
-                        onChangeText={(value) =>
-                          handleSetValueChange(set.id, "weight", value)
-                        }
-                        style={{ textAlign: "center" }}
-                      />
-                    </View>
-
-                    <View className="flex-1 items-center">
-                      <TextInput
-                        className="w-16 text-white border-2 border-primary rounded-full py-2"
-                        keyboardType="numeric"
-                        placeholderTextColor="#666"
-                        value={set.reps?.toString() ?? ""}
-                        onChangeText={(value) =>
-                          handleSetValueChange(set.id, "reps", value)
-                        }
-                        style={{ textAlign: "center" }}
-                      />
-                    </View>
-                  </View>
-                ),
-              )}
-
-              {/* Add set button */}
-              <Pressable
-                onPress={handleAddSet}
-                className="flex flex-row items-center justify-center gap-1 mt-2 rounded-full w-9/10  bg-primary py-2"
-              >
-                <SymbolView name="plus" tintColor="#717171" size={10} />
-                <Text className="text-text-secondary font-sans-semibold">
-                  Add new set
-                </Text>
-              </Pressable>
-            </View>
-
-            <View className="w-9/10">
+            <View className="w-9/10 mb-5">
               <TextInput
                 className="w-full text-white border-2 border-primary rounded-2xl p-2"
                 placeholderTextColor="#666"
@@ -645,9 +682,16 @@ const ExerciseDetailScreen = () => {
                 disabled={exerciseIndex === 0}
                 onPress={() => setExeriseIndex((prev) => prev - 1)}
               >
-                <SymbolView name="chevron.left" tintColor="#717171" size={10} />
+                <SymbolView
+                  name="chevron.left"
+                  tintColor={`${exerciseIndex === 0 ? "#717171" : "#ffffff"}`}
+                  size={10}
+                  weight="bold"
+                />
 
-                <Text className="text-text-secondary font-sans-semibold">
+                <Text
+                  className={`font-sans-semibold ${exerciseIndex === 0 ? "text-text-secondary" : "text-text-primary"}`}
+                >
                   Back
                 </Text>
               </Pressable>
@@ -665,18 +709,21 @@ const ExerciseDetailScreen = () => {
                 }
                 onPress={() => setExeriseIndex((prev) => prev + 1)}
               >
-                <Text className="text-text-secondary font-sans-semibold">
+                <Text
+                  className={`font-sans-semibold ${exerciseIndex === selectedWorkoutSession.exercises.length - 1 ? "text-text-secondary" : "text-text-primary"}`}
+                >
                   Next
                 </Text>
                 <SymbolView
                   name="chevron.right"
-                  tintColor="#717171"
+                  tintColor={`${exerciseIndex === selectedWorkoutSession.exercises.length - 1 ? "#717171" : "#ffffff"}`}
                   size={10}
+                  weight="bold"
                 />
               </Pressable>
             </View>
             {message && (
-              <View className="flex items-center justify-center w-9/10 flex-1">
+              <View className="flex items-center mt-5 justify-center w-9/10 flex-1">
                 <Text
                   className={`${message.ok ? "text-accent-2" : "text-accent-1"} text-center`}
                 >

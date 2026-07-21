@@ -47,9 +47,7 @@ export const DELETE = withAuth(async (req, user) => {
   try {
     const body = await req.json();
     const _id = body._id;
-    if (!_id) {
-      return Response.json({ error: "Missing _id" }, { status: 400 });
-    }
+
     const db = await connectToDatabase();
     const sessionsCollection = db.collection("workoutSessions");
     await sessionsCollection.deleteOne({

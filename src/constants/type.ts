@@ -19,7 +19,7 @@ export type WorkoutSession = {
   exercises: WorkoutExercise[];
   createdAt: Date;
   status: string;
-  startAt: Date;
+  startedAt: Date;
 };
 
 export type WorkoutSessionCache = {

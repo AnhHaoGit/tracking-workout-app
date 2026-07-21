@@ -11,12 +11,22 @@ export const POST = withAuth(async (req, user) => {
     const db = await connectToDatabase();
     const sessionsCollection = db.collection("workoutSessions");
 
-    await sessionsCollection.updateOne(
-      { _id: new ObjectId(_id), userId: user.sub },
-      {
-        $set: { status: status, startedAt: startedAt },
-      },
-    );
+    if (status === "In progress") {
+      await sessionsCollection.updateOne(
+        { _id: new ObjectId(_id), userId: user.sub },
+        {
+          $set: { status: status, startedAt: startedAt },
+        },
+      );
+    } else {
+      await sessionsCollection.updateOne(
+        { _id: new ObjectId(_id), userId: user.sub },
+        {
+          $set: { status: status },
+        },
+      );
+    }
+
     return Response.json({ message: "Start the session successfully!" });
   } catch (error) {
     console.error("Error changing workout session status:", error);

@@ -7,15 +7,7 @@ export const POST = withAuth(async (req, user) => {
     const body = await req.json();
     const updatedWorkoutSession = body.updatedWorkoutSession;
 
-    if (!updatedWorkoutSession) {
-      return Response.json(
-        { error: "Missing updatedWorkoutSession" },
-        { status: 400 },
-      );
-    }
-
-    const { _id, ...sessionData } = updatedWorkoutSession;
-
+    const { _id, userId, ...sessionData } = updatedWorkoutSession;
     const db = await connectToDatabase();
     const sessionsCollection = db.collection("workoutSessions");
 

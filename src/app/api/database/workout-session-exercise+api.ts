@@ -8,13 +8,6 @@ export const DELETE = withAuth(async (req, user) => {
     const _id = body._id;
     const exerciseId = body.exerciseId;
 
-    if (!_id || exerciseId === undefined) {
-      return Response.json(
-        { error: "Missing _id or exerciseId." },
-        { status: 400 },
-      );
-    }
-
     const db = await connectToDatabase();
     const sessionsCollection = db.collection("workoutSessions");
 
@@ -54,13 +47,6 @@ export const POST = withAuth(async (req, user) => {
     const body = await req.json();
     const _id = body._id;
     const exercises = body.exercises;
-
-    if (!_id || !Array.isArray(exercises) || exercises.length === 0) {
-      return Response.json(
-        { error: "Missing _id or exercises." },
-        { status: 400 },
-      );
-    }
 
     const db = await connectToDatabase();
     const sessionsCollection = db.collection("workoutSessions");
