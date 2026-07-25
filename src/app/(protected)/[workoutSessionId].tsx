@@ -79,7 +79,6 @@ const ExerciseDetailScreen = () => {
   }, [fetchWithAuth, user, params.workoutSessionId, router]);
 
   const handleChangeWorkoutSessionStatus = async (status: string) => {
-    const current = new Date();
     try {
       const res = await fetchWithAuth(
         `${BASE_URL}/api/database/workout-session-status`,
@@ -91,12 +90,13 @@ const ExerciseDetailScreen = () => {
           body: JSON.stringify({
             _id: params.workoutSessionId,
             status,
-            current,
           }),
         },
       );
 
       if (res.ok) {
+        const { current } = await res.json();
+
         if (params.workoutSessionId) {
           const patch =
             status === "In progress"

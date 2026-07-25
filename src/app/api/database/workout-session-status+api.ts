@@ -7,27 +7,36 @@ export const POST = withAuth(async (req, user) => {
     const body = await req.json();
     const _id = body._id;
     const status = body.status;
-    const current = body.current;
+
+    if (!_id || !ObjectId.isValid(_id)) {
+      return Response.json({ error: "Invalid session id" }, { status: 400 });
+    }
+
+    const current = new Date();
     const db = await connectToDatabase();
     const sessionsCollection = db.collection("workoutSessions");
 
-    if (status === "In progress") {
-      await sessionsCollection.updateOne(
-        { _id: new ObjectId(_id), userId: user.sub },
-        {
-          $set: { status: status, startedAt: current },
-        },
-      );
-    } else {
-      await sessionsCollection.updateOne(
-        { _id: new ObjectId(_id), userId: user.sub },
-        {
-          $set: { status: status, finishedAt: current },
-        },
+    const update =
+      status === "In progress"
+        ? { $set: { status, startedAt: current } }
+        : { $set: { status, finishedAt: current } };
+
+    const result = await sessionsCollection.updateOne(
+      { _id: new ObjectId(_id), userId: user.sub },
+      update,
+    );
+
+    if (result.matchedCount === 0) {
+      return Response.json(
+        { error: "Session not found or not authorized" },
+        { status: 404 },
       );
     }
 
-    return Response.json({ message: "Start the session successfully!" });
+    return Response.json({
+      message: "Workout session status updated successfully!",
+      current,
+    });
   } catch (error) {
     console.error("Error changing workout session status:", error);
     return Response.json(
@@ -36,4 +45,3 @@ export const POST = withAuth(async (req, user) => {
     );
   }
 });
-

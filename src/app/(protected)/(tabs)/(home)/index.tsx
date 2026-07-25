@@ -70,68 +70,55 @@ const HomeScreen = () => {
 
   React.useEffect(() => {
     const fetchUserData = async () => {
-      if (!user) return;
-      // const cachedUserData = await userCache?.getUserData(USER_KEY_NAME);
+      if (!user || userData) return;
 
-      // if (cachedUserData) {
-      //   updateUserData(cachedUserData);
-      // } else {
-        try {
-          const response = await fetchWithAuth(
-            `${BASE_URL}/api/database/user`,
-            {
-              method: "GET",
-            },
-          );
+      try {
+        console.log("Fetching user data");
+        const response = await fetchWithAuth(`${BASE_URL}/api/database/user`, {
+          method: "GET",
+        });
+
+        if (response.ok) {
           const data = await response.json();
           updateUserData(data);
-          // userCache?.saveUserData(USER_KEY_NAME, data);
-        } catch (error) {
+        } else {
+          throw new Error();
+        }
+      } catch (error) {
+        if (error instanceof Error) {
           console.error("Failed to load user data", error);
           showToast(
             "errorToast",
             "Failed to load user data. Check your Internet connection",
           );
         }
-      // }
+      }
     };
     fetchUserData();
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, user]); // KHÔNG đưa userData vào đây
 
   React.useEffect(() => {
     const loadSessions = async () => {
-      if (!user) return;
+      if (!user || workoutSessions.length > 0) return;
 
-      // const cachedSessions = await workoutSessionCache?.getWorkoutSessions(
-      //   WORKOUT_SESSIONS_KEY_NAME,
-      // );
+      try {
+        console.log("Fetching workout sessions");
 
-      // if (cachedSessions) {
-      //   saveWorkoutSessions(cachedSessions);
-      // } else {
-        try {
-          const response = await fetchWithAuth(
-            `${BASE_URL}/api/database/workout-sessions`,
-            {
-              method: "GET",
-            },
-          );
-          if (response.ok) {
-            const data = await response.json();
-            // await workoutSessionCache?.saveWorkoutSessions(
-            //   WORKOUT_SESSIONS_KEY_NAME,
-            //   data,
-            // );
-            saveWorkoutSessions(data);
-          }
-        } catch (error) {
-          console.error("Failed to load workout sessions", error);
-          showToast(
-            "errorToast",
-            "Failed to load workout sessions. Check your Internet connection",
-          );
+        const response = await fetchWithAuth(
+          `${BASE_URL}/api/database/workout-sessions`,
+          { method: "GET" },
+        );
+        if (response.ok) {
+          const data = await response.json();
+          saveWorkoutSessions(data);
         }
-      // }
+      } catch (error) {
+        console.error("Failed to load workout sessions", error);
+        showToast(
+          "errorToast",
+          "Failed to load workout sessions. Check your Internet connection",
+        );
+      }
     };
 
     loadSessions();
@@ -152,10 +139,6 @@ const HomeScreen = () => {
 
       if (res.ok) {
         deleteWorkoutSession(_id);
-        // await workoutSessionCache?.deleteWorkoutSession(
-        //   WORKOUT_SESSIONS_KEY_NAME,
-        //   _id,
-        // );
       }
     } catch (error) {
       console.error("Failed to create workout session", error);

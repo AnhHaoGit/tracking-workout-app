@@ -126,56 +126,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signIn = async () => {
+  const signIn = React.useCallback(async () => {
     try {
       if (!request) {
         console.log("No request");
         return;
       }
-
       await promptAsync();
     } catch (e) {
       console.log(e);
     }
-  };
+  }, [request, promptAsync]);
 
-  const signOut = async () => {
+  const signOut = React.useCallback(async () => {
     await tokenCache?.deleteToken(TOKEN_KEY_NAME);
-    // await tokenCache?.deleteToken("refreshToken");
-
-    // Clear state
     setUser(null);
     setAccessToken(null);
-    // setRefreshToken(null);
-  };
+  }, []);
+  const fetchWithAuth = React.useCallback(
+    async (url: string, options: RequestInit) => {
+      // For native: Use token in Authorization header
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
-  const fetchWithAuth = async (url: string, options: RequestInit) => {
-    // For native: Use token in Authorization header
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    return response;
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        signIn,
-        signOut,
-        isLoading,
-        fetchWithAuth,
-        error,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+      return response;
+    },
+    [accessToken],
   );
+  const value = React.useMemo(
+    () => ({
+      user,
+      signIn,
+      signOut,
+      isLoading,
+      fetchWithAuth,
+      error,
+    }),
+    [user, signIn, signOut, isLoading, fetchWithAuth, error],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

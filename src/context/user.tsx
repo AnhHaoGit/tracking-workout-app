@@ -3,14 +3,16 @@ import { UserData } from "@/constants/type";
 
 const UserContext = React.createContext({
   userData: null as UserData | null,
-  updateUserData: (data: UserData) => {},
+  updateUserData: (data: any) => {},
 });
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [userData, setUserData] = React.useState<UserData | null>(null);
 
-  const updateUserData = (data: UserData) => {
-    setUserData(data);
+  const updateUserData = (data: any) => {
+    setUserData((prev) => {
+      return { ...prev, ...data };
+    });
   };
 
   return (

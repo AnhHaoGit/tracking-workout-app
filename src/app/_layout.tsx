@@ -81,7 +81,7 @@ export default function RootLayout() {
         className="flex-row items-center gap-3 rounded-3xl border-2 border-primary bg-background px-4 py-3"
         style={{ width: "90%" }}
       >
-        <View className="h-9 w-9 items-center justify-center rounded-full border border-accent-2 bg-accent-1/10">
+        <View className="h-9 w-9 items-center justify-center rounded-full border border-accent-2 bg-accent-2/10">
           <SymbolView
             name="info"
             tintColor="#ff9100"

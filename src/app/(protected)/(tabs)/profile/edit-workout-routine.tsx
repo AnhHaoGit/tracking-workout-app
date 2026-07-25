@@ -1,28 +1,36 @@
 import { BASE_URL, itemSize1, USER_KEY_NAME } from "@/constants/constants";
 import { useAuth } from "@/context/auth";
-import { userCache } from "@/secure-store/user";
 import { Checkbox } from "expo-checkbox";
 import { SymbolView } from "expo-symbols";
 import * as React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useUser } from "@/context/user";
 import showToast from "@/utils/toast";
+import { useRouter } from "expo-router";
 
 const EditWorkoutRoutine = () => {
+  const router = useRouter();
   const [isOnTheGoChecked, setOnTheGoChecked] = React.useState(false);
   const [isWeeklyFixedChecked, setWeeklyFixedChecked] = React.useState(false);
-  const { fetchWithAuth, user } = useAuth();
+  const { fetchWithAuth, isLoading, user } = useAuth();
   const { userData, updateUserData } = useUser();
+  React.useLayoutEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/login");
+    }
+  }, [isLoading, user, router]);
 
   React.useEffect(() => {
-    if (userData && userData.routine === "daily") {
+    if (!userData) return;
+
+    if (userData.routine === "daily") {
       setOnTheGoChecked(true);
-    } else if (userData && userData.routine === "weekly") {
-      setWeeklyFixedChecked(true);
+      setWeeklyFixedChecked(false);
     } else {
+      setOnTheGoChecked(false);
       setWeeklyFixedChecked(true);
     }
-  }, [userData, setOnTheGoChecked, setWeeklyFixedChecked]);
+  }, [userData]);
 
   const handleCheckOnTheGo = (checked: boolean) => {
     setOnTheGoChecked(checked);
@@ -43,23 +51,25 @@ const EditWorkoutRoutine = () => {
   };
 
   const handleChangeRoutine = async (routine: string) => {
+    const previous = { isOnTheGoChecked, isWeeklyFixedChecked };
     try {
       const response = await fetchWithAuth(`${BASE_URL}/api/database/routine`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ routine, sub: user?.sub }),
       });
 
       if (!response.ok) {
-        throw new Error();
+        throw new Error(`Routine update failed with status ${response.status}`);
       }
-      if (userData !== null) {
-        const updatedUserData = { ...userData, routine };
-        updateUserData(updatedUserData);
-        userCache?.saveUserData(USER_KEY_NAME, updatedUserData);
-        showToast("successToast", "Update workout routine successfully!");
-      }
+      updateUserData({ routine });
+      showToast("successToast", "Update workout routine successfully!");
     } catch (error) {
       if (error instanceof Error) {
+        setOnTheGoChecked(previous.isOnTheGoChecked);
+        setWeeklyFixedChecked(previous.isWeeklyFixedChecked);
         showToast(
           "errorToast",
           "Cannot update workout routine. Try again later.",
@@ -151,30 +161,3 @@ const EditWorkoutRoutine = () => {
 };
 
 export default EditWorkoutRoutine;
-
-const styles = StyleSheet.create({
-  checkBoxSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    width: "90%",
-    borderRadius: 30,
-    gap: 4,
-  },
-  paragraph: {
-    fontSize: 16,
-    color: "#ffffff",
-  },
-  checkbox: {
-    margin: 8,
-    borderRadius: "100%",
-    color: "#000000",
-  },
-  editButton: {
-    width: 30,
-    height: 30,
-    padding: 5,
-    borderRadius: "100%",
-  },
-});
