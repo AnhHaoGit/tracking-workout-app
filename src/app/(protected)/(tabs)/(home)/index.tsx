@@ -1,12 +1,12 @@
 import {
   BASE_URL,
   itemSize1,
-  USER_KEY_NAME,
+  // USER_KEY_NAME,
   WORKOUT_SESSIONS_KEY_NAME,
 } from "@/constants/constants";
 import { useUser } from "@/context/user";
-import { userCache } from "@/secure-store/user";
-import { workoutSessionCache } from "@/secure-store/workout-sessions";
+// import { userCache } from "@/secure-store/user";
+// import { workoutSessionCache } from "@/secure-store/workout-sessions";
 import { Link, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { styled } from "nativewind";
@@ -22,6 +22,7 @@ import {
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../../../context/auth";
 import { useWorkoutSessions } from "@/context/workout-sessions";
+import showToast from "@/utils/toast";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -31,7 +32,6 @@ const HomeScreen = () => {
   const { userData, updateUserData } = useUser();
   const { workoutSessions, saveWorkoutSessions, deleteWorkoutSession } =
     useWorkoutSessions();
-  const [errorMessage, setErrorMessage] = React.useState("");
 
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
@@ -70,64 +70,54 @@ const HomeScreen = () => {
 
   React.useEffect(() => {
     const fetchUserData = async () => {
-      if (!user) return;
-      const cachedUserData = await userCache?.getUserData(USER_KEY_NAME);
+      if (!user || userData) return;
 
-      if (cachedUserData) {
-        updateUserData(cachedUserData);
-      } else {
-        try {
-          const response = await fetchWithAuth(
-            `${BASE_URL}/api/database/user`,
-            {
-              method: "GET",
-            },
-          );
+      try {
+        console.log("Fetching user data");
+        const response = await fetchWithAuth(`${BASE_URL}/api/database/user`, {
+          method: "GET",
+        });
+
+        if (response.ok) {
           const data = await response.json();
-          console.log("data", data);
           updateUserData(data);
-          userCache?.saveUserData(USER_KEY_NAME, data);
-        } catch (error) {
+        } else {
+          throw new Error();
+        }
+      } catch (error) {
+        if (error instanceof Error) {
           console.error("Failed to load user data", error);
+          showToast(
+            "errorToast",
+            "Failed to load user data. Check your Internet connection",
+          );
         }
       }
     };
     fetchUserData();
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, user]); // KHÔNG đưa userData vào đây
 
   React.useEffect(() => {
     const loadSessions = async () => {
-      setErrorMessage("");
-      if (!user) return;
+      if (!user || workoutSessions.length > 0) return;
 
-      const cachedSessions = await workoutSessionCache?.getWorkoutSessions(
-        WORKOUT_SESSIONS_KEY_NAME,
-      );
+      try {
+        console.log("Fetching workout sessions");
 
-      if (cachedSessions) {
-        saveWorkoutSessions(cachedSessions);
-      } else {
-        try {
-          const response = await fetchWithAuth(
-            `${BASE_URL}/api/database/workout-sessions`,
-            {
-              method: "GET",
-            },
-          );
-          if (response.ok) {
-            const data = await response.json();
-            await workoutSessionCache?.saveWorkoutSessions(
-              WORKOUT_SESSIONS_KEY_NAME,
-              data,
-            );
-            saveWorkoutSessions(data);
-          }
-        } catch (error) {
-          console.error("Failed to load workout sessions", error);
-          setErrorMessage(
-            "Failed to load workout sessions. Check your Internet connection",
-          );
+        const response = await fetchWithAuth(
+          `${BASE_URL}/api/database/workout-sessions`,
+          { method: "GET" },
+        );
+        if (response.ok) {
+          const data = await response.json();
+          saveWorkoutSessions(data);
         }
+      } catch (error) {
+        console.error("Failed to load workout sessions", error);
+        showToast(
+          "errorToast",
+          "Failed to load workout sessions. Check your Internet connection",
+        );
       }
     };
 
@@ -135,7 +125,6 @@ const HomeScreen = () => {
   }, [fetchWithAuth, user]);
 
   const handleDeleteWorkoutSession = async (_id: string) => {
-    setErrorMessage("");
     try {
       const res = await fetchWithAuth(
         `${BASE_URL}/api/database/workout-sessions`,
@@ -150,14 +139,11 @@ const HomeScreen = () => {
 
       if (res.ok) {
         deleteWorkoutSession(_id);
-        await workoutSessionCache?.deleteWorkoutSession(
-          WORKOUT_SESSIONS_KEY_NAME,
-          _id,
-        );
       }
     } catch (error) {
       console.error("Failed to create workout session", error);
-      setErrorMessage(
+      showToast(
+        "errorToast",
         "Failed to delete workout session. Check your Internet connection",
       );
     }
@@ -263,7 +249,7 @@ const HomeScreen = () => {
                       </Text>
                       <View className="rounded-full border border-primary bg-primary/10 px-3 py-1 flex items-center justify-center">
                         <Text
-                          className={`font-sans-medium text-xs ${session.status === "Not started yet" && "text-accent-1"} ${session.status === "In progress" && "text-accent-2"}`}
+                          className={`font-sans-medium text-xs ${session.status === "Not started yet" && "text-accent-1"} ${session.status === "In progress" && "text-accent-2"} ${session.status === "Completed" && "text-accent-3"}`}
                         >
                           {session.status ?? "Not started yet"}
                         </Text>
@@ -281,11 +267,6 @@ const HomeScreen = () => {
             ))
           )}
         </View>
-        {errorMessage !== "" ? (
-          <Text className="mt-4 font-sans-regular text-sm text-accent-1">
-            {errorMessage}
-          </Text>
-        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

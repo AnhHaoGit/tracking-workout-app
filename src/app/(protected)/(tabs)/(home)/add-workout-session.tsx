@@ -2,23 +2,22 @@ import { BASE_URL, WORKOUT_SESSIONS_KEY_NAME } from "@/constants/constants";
 import { EXERCISES } from "@/constants/exercises";
 import { useAuth } from "@/context/auth";
 import { WorkoutExercise } from "@/constants/type";
-import { workoutSessionCache } from "@/secure-store/workout-sessions";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useWorkoutSessions } from "@/context/workout-sessions";
+import ExercisesPickerModal from "@/components/ExercisesPickerModal";
 
 import React from "react";
 import {
-  FlatList,
   Image,
-  Modal,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import showToast from "@/utils/toast";
 
 const suggestedNames = [
   "Pull Day",
@@ -44,14 +43,8 @@ const AddWorkoutSession = () => {
   >([]);
   const [isExerciseModalVisible, setExerciseModalVisible] =
     React.useState(false);
-  const [exerciseSearch, setExerciseSearch] = React.useState("");
-  const [selectedTarget, setSelectedTarget] = React.useState("All");
-  const [selectedEquipment, setSelectedEquipment] = React.useState("All");
-  const [pendingExerciseIds, setPendingExerciseIds] = React.useState<number[]>(
-    [],
-  );
+
   const [isSaving, setIsSaving] = React.useState(false);
-  const [errorMessage, setErrorMessage] = React.useState("");
   const [date, setDate] = React.useState(new Date());
   const [time, setTime] = React.useState(new Date());
   const { addWorkoutSession } = useWorkoutSessions();
@@ -62,51 +55,9 @@ const AddWorkoutSession = () => {
     }
   }, [isLoading, user, router]);
 
-  const targetMuscles = React.useMemo<string[]>(
-    () => [
-      "All",
-      ...Array.from(
-        new Set(
-          EXERCISES.map((item) => item.targetMuscle).filter(
-            (target): target is string => Boolean(target),
-          ),
-        ),
-      ),
-    ],
-    [],
-  );
-
-  const equipmentOptions = React.useMemo<string[]>(
-    () => [
-      "All",
-      ...Array.from(new Set(EXERCISES.flatMap((item) => item.equipment))),
-    ],
-    [],
-  );
-
-  const filteredExercises = React.useMemo(() => {
-    const query = exerciseSearch.trim().toLowerCase();
-
-    return EXERCISES.filter((exercise) => {
-      const matchesSearch =
-        query.length === 0 || exercise.name.toLowerCase().includes(query);
-      const matchesTarget =
-        selectedTarget === "All" || exercise.targetMuscle === selectedTarget;
-      const matchesEquipment =
-        selectedEquipment === "All" ||
-        exercise.equipment.includes(selectedEquipment);
-      return matchesSearch && matchesTarget && matchesEquipment;
-    });
-  }, [exerciseSearch, selectedTarget, selectedEquipment]);
-
-  const pendingExerciseIdSet = React.useMemo(
-    () => new Set(pendingExerciseIds),
-    [pendingExerciseIds],
-  );
-
-  const handleAddExercises = () => {
+  const handleConfirmExercises = React.useCallback((selectedIds: number[]) => {
     const chosen = EXERCISES.filter((exercise) =>
-      pendingExerciseIds.includes(exercise.id),
+      selectedIds.includes(exercise.id),
     ).map((exercise) => ({
       id: exercise.id,
       name: exercise.name,
@@ -120,6 +71,7 @@ const AddWorkoutSession = () => {
         { id: 3, weight: null, reps: null },
       ],
       img: exercise.img,
+      technique: "None",
     }));
 
     setSelectedExercises((current) => {
@@ -127,20 +79,17 @@ const AddWorkoutSession = () => {
       const uniqueChosen = chosen.filter(
         (exercise) => !existingIds.has(exercise.id),
       );
-
       return [...current, ...uniqueChosen];
     });
-    setPendingExerciseIds([]);
     setExerciseModalVisible(false);
-  };
+  }, []);
 
   const handleStepOneNext = () => {
     if (!title.trim()) {
-      setErrorMessage("Please enter a name for your workout session.");
+      showToast("infoToast", "Please enter a name for your workout session.");
       return;
     }
 
-    setErrorMessage("");
     setStep(2);
   };
 
@@ -155,29 +104,23 @@ const AddWorkoutSession = () => {
     const minimumDateTime = new Date(Date.now() + 60_000);
 
     if (selectedDateTime < minimumDateTime) {
-      setErrorMessage(
+      showToast(
+        "infoToast",
         "Please choose a date and time at least 1 minute in the future.",
       );
       return;
     }
 
-    setErrorMessage("");
     setStep(3);
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      setErrorMessage("Please name your workout session.");
-      return;
-    }
-
     if (selectedExercises.length === 0) {
-      setErrorMessage("Please add at least one exercise.");
+      showToast("infoToast", "Please add at least one exercise.");
       return;
     }
 
     setIsSaving(true);
-    setErrorMessage("");
 
     const session = {
       _id: null,
@@ -204,18 +147,14 @@ const AddWorkoutSession = () => {
       if (res.ok) {
         const finalSession = await res.json();
 
-        await workoutSessionCache?.addWorkoutSession(
-          WORKOUT_SESSIONS_KEY_NAME,
-          finalSession,
-        );
-
         addWorkoutSession(finalSession);
 
         router.replace("/(protected)/(tabs)/(home)");
       }
     } catch (error) {
       console.error("Failed to create workout session", error);
-      setErrorMessage(
+      showToast(
+        "errorToast",
         "Something went wrong while saving your workout session.",
       );
       setIsSaving(false);
@@ -231,20 +170,11 @@ const AddWorkoutSession = () => {
         value={title}
         onChangeText={(value) => {
           setTitle(value);
-          if (errorMessage) {
-            setErrorMessage("");
-          }
         }}
         placeholder="Pull Day, Cardio..."
         placeholderTextColor="#7A7A7A"
         className="mb-4 rounded-2xl border border-primary bg-background px-4 py-3 font-sans-regular text-base text-text-primary"
       />
-
-      {errorMessage ? (
-        <Text className="mb-4 font-sans-regular text-sm text-accent-1">
-          {errorMessage}
-        </Text>
-      ) : null}
 
       <View className="flex-row flex-wrap">
         {suggestedNames.map((name) => (
@@ -302,16 +232,9 @@ const AddWorkoutSession = () => {
         </Text>
       </View>
 
-      {errorMessage ? (
-        <Text className="mt-4 font-sans-regular text-sm text-accent-1">
-          {errorMessage}
-        </Text>
-      ) : null}
-
       <View className="mt-6 flex-row justify-between">
         <Pressable
           onPress={() => {
-            setErrorMessage("");
             setStep(1);
           }}
           className="rounded-full border border-primary px-5 py-3"
@@ -339,12 +262,7 @@ const AddWorkoutSession = () => {
       </Text>
 
       <Pressable
-        onPress={() => {
-          setPendingExerciseIds(
-            selectedExercises.map((exercise) => exercise.id),
-          );
-          setExerciseModalVisible(true);
-        }}
+        onPress={() => setExerciseModalVisible(true)}
         className="mb-4 rounded-2xl border border-primary bg-background px-4 py-3"
       >
         <Text className="font-sans-semibold text-base text-text-primary">
@@ -397,16 +315,9 @@ const AddWorkoutSession = () => {
         </Text>
       )}
 
-      {errorMessage ? (
-        <Text className="mb-3 font-sans-regular text-sm text-accent-1">
-          {errorMessage}
-        </Text>
-      ) : null}
-
       <View className="mt-6 flex-row justify-between">
         <Pressable
           onPress={() => {
-            setErrorMessage("");
             setStep(2);
           }}
           className="rounded-full border border-primary px-5 py-3"
@@ -426,151 +337,12 @@ const AddWorkoutSession = () => {
         </Pressable>
       </View>
 
-      <Modal
+      <ExercisesPickerModal
         visible={isExerciseModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setExerciseModalVisible(false)}
-      >
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="max-h-full rounded-t-[28px] border border-primary bg-background p-4">
-            <View className="mb-3 flex-row items-center justify-between">
-              <Text className="font-sans-semibold text-xl text-text-primary">
-                Choose exercises
-              </Text>
-              <Pressable onPress={() => setExerciseModalVisible(false)}>
-                <Text className="font-sans-semibold text-base text-accent-2">
-                  Close
-                </Text>
-              </Pressable>
-            </View>
-
-            <TextInput
-              value={exerciseSearch}
-              onChangeText={setExerciseSearch}
-              placeholder="Search exercises"
-              placeholderTextColor="#7A7A7A"
-              className="mb-3 rounded-2xl border border-primary bg-background px-4 py-3 font-sans-regular text-base text-text-primary"
-            />
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="mb-3"
-            >
-              {targetMuscles.map((target) => {
-                const selected = target === selectedTarget;
-                return (
-                  <Pressable
-                    key={target}
-                    onPress={() => setSelectedTarget(target)}
-                    className={`mr-2 rounded-full border px-3 py-2 ${
-                      selected
-                        ? "border-accent-2 bg-accent-2"
-                        : "border-primary bg-background"
-                    }`}
-                  >
-                    <Text
-                      className={`font-sans-medium text-sm ${selected ? "text-background" : "text-text-primary"}`}
-                    >
-                      {target}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="mb-3"
-            >
-              {equipmentOptions.map((equipment) => {
-                const selected = equipment === selectedEquipment;
-                return (
-                  <Pressable
-                    key={equipment}
-                    onPress={() => setSelectedEquipment(equipment)}
-                    className={`mr-2 rounded-full border px-3 py-2 ${
-                      selected
-                        ? "border-accent-1 bg-accent-1"
-                        : "border-primary bg-background"
-                    }`}
-                  >
-                    <Text
-                      className={`font-sans-medium text-sm ${selected ? "text-background" : "text-text-primary"}`}
-                    >
-                      {equipment}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            <FlatList
-              data={filteredExercises}
-              keyExtractor={(item) => item.id.toString()}
-              style={{ maxHeight: 320 }}
-              contentContainerStyle={{ paddingBottom: 8 }}
-              showsVerticalScrollIndicator={false}
-              removeClippedSubviews
-              initialNumToRender={10}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-              renderItem={({ item: exercise }) => {
-                const selected = pendingExerciseIdSet.has(exercise.id);
-
-                return (
-                  <Pressable
-                    key={exercise.id}
-                    onPress={() => {
-                      setPendingExerciseIds((current) =>
-                        current.includes(exercise.id)
-                          ? current.filter((id) => id !== exercise.id)
-                          : [...current, exercise.id],
-                      );
-                    }}
-                    className={`mb-3 rounded-2xl border p-3 ${
-                      selected
-                        ? "border-accent-2 bg-accent-2/10"
-                        : "border-primary bg-background"
-                    }`}
-                  >
-                    <View className="flex-row items-center gap-3">
-                      <Image
-                        source={{ uri: exercise.img }}
-                        className="h-15 w-15 rounded-xl"
-                        resizeMode="cover"
-                      />
-                      <View className="flex-1">
-                        <Text className="font-sans-semibold text-lg text-text-primary">
-                          {exercise.name}
-                        </Text>
-                        <Text className="font-sans-regular text-sm text-text-secondary">
-                          {exercise.targetMuscle}
-                          {exercise.secondaryMuscles.length > 0
-                            ? `, ${exercise.secondaryMuscles.join(", ")}`
-                            : ""}
-                          {"  "}• {exercise.type}
-                        </Text>
-                      </View>
-                    </View>
-                  </Pressable>
-                );
-              }}
-            />
-
-            <Pressable
-              onPress={handleAddExercises}
-              className="mt-4 rounded-full bg-accent-2 px-4 py-3"
-            >
-              <Text className="text-center font-sans-semibold text-base text-background">
-                Add selected exercises
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setExerciseModalVisible(false)}
+        existingExerciseIds={selectedExercises.map((exercise) => exercise.id)}
+        onConfirm={handleConfirmExercises}
+      />
     </View>
   );
 

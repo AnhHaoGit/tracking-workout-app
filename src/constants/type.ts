@@ -8,7 +8,7 @@ export type WorkoutExercise = {
   img?: string;
   sets: { id: number; reps: string | null; weight: string | null }[];
   note?: string;
-  technique?: null | string;
+  technique?: string;
 };
 
 export type WorkoutSession = {

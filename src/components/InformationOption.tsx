@@ -1,6 +1,6 @@
-import { View, Text, TouchableOpacity } from "react-native";
-import React from "react";
+import { View, Text, Pressable } from "react-native";
 import { SymbolView, SFSymbol } from "expo-symbols";
+
 const InformationOption = ({
   symbolName,
   title,
@@ -9,20 +9,20 @@ const InformationOption = ({
   title: string;
 }) => {
   return (
-    <TouchableOpacity className="w-full bg-primary flex flex-row justify-between py-1 items-center px-4">
-      <View className="flex flex-row gap-2 justify-center items-center">
+    <Pressable className="w-full flex-row items-center justify-between rounded-full border-2 border-primary bg-background/80 px-4 py-4">
+      <View className="flex-row items-center justify-center gap-3">
         <SymbolView
           name={symbolName}
           tintColor="#ffffff"
           weight="bold"
           size={18}
         />
-        <Text className="text-text-primary text-xl font-sans-semibold">
+        <Text className="font-sans-semibold text-lg text-text-primary">
           {title}
         </Text>
       </View>
       <SymbolView name="chevron.right" tintColor="#717171" size={15} />
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
