@@ -1,12 +1,11 @@
-import { Checkbox } from "expo-checkbox";
 import { SymbolView } from "expo-symbols";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 const EditWorkoutRoutine = () => {
   return (
     <View className="flex-1 flex flex-col items-center bg-background">
       <SymbolView
-        name="calendar.badge.clock"
+        name="medal.fill"
         tintColor="#ffffff"
         weight="bold"
         size={80}

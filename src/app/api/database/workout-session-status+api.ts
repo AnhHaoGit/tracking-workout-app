@@ -7,7 +7,7 @@ export const POST = withAuth(async (req, user) => {
     const body = await req.json();
     const _id = body._id;
     const status = body.status;
-    const startedAt = body.startedAt;
+    const current = body.current;
     const db = await connectToDatabase();
     const sessionsCollection = db.collection("workoutSessions");
 
@@ -15,14 +15,14 @@ export const POST = withAuth(async (req, user) => {
       await sessionsCollection.updateOne(
         { _id: new ObjectId(_id), userId: user.sub },
         {
-          $set: { status: status, startedAt: startedAt },
+          $set: { status: status, startedAt: current },
         },
       );
     } else {
       await sessionsCollection.updateOne(
         { _id: new ObjectId(_id), userId: user.sub },
         {
-          $set: { status: status },
+          $set: { status: status, finishedAt: current },
         },
       );
     }
@@ -36,3 +36,4 @@ export const POST = withAuth(async (req, user) => {
     );
   }
 });
+

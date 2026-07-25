@@ -1,5 +1,4 @@
-import { BASE_URL, WORKOUT_SESSIONS_KEY_NAME } from "@/constants/constants";
-import { workoutSessionCache } from "@/secure-store/workout-sessions";
+import { BASE_URL } from "@/constants/constants";
 import { WorkoutSession } from "@/constants/type";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
@@ -13,6 +12,7 @@ import {
   Image,
   FlatList,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useAuth } from "../../context/auth";
 import { SymbolView } from "expo-symbols";
@@ -20,8 +20,10 @@ import { useWorkoutSessions } from "@/context/workout-sessions";
 import { EXERCISES } from "@/constants/exercises";
 
 import SelectDropdown from "react-native-select-dropdown";
+import showToast from "@/utils/toast";
+import ExercisesPickerModal from "@/components/ExercisesPickerModal";
 
-const TECHNIQUES = ["Warm-up", "Failure"];
+const TECHNIQUES = ["None", "Warm-up", "Failure"];
 const ExerciseDetailScreen = () => {
   const params = useLocalSearchParams<{ workoutSessionId?: string }>();
   const [selectedWorkoutSession, setSelectedWorkoutSession] = React.useState<
@@ -30,69 +32,10 @@ const ExerciseDetailScreen = () => {
   const [exerciseIndex, setExeriseIndex] = React.useState<number>(0);
   const router = useRouter();
   const { user, isLoading, fetchWithAuth } = useAuth();
-  const { workoutSessions, updateWorkoutSessions } = useWorkoutSessions();
+  const { updateWorkoutSessions } = useWorkoutSessions();
+  const [isFetching, setIsFetching] = React.useState(false);
   const [isExerciseModalVisible, setExerciseModalVisible] =
     React.useState<boolean>(false);
-  const [message, setMessage] = React.useState<{
-    ok: boolean;
-    message: string;
-  } | null>(null);
-  const [exerciseSearch, setExerciseSearch] = React.useState("");
-  const [selectedTarget, setSelectedTarget] = React.useState("All");
-  const [selectedEquipment, setSelectedEquipment] = React.useState("All");
-  const [pendingExerciseIds, setPendingExerciseIds] = React.useState<number[]>(
-    [],
-  );
-
-  const targetMuscles = React.useMemo<string[]>(
-    () => [
-      "All",
-      ...Array.from(
-        new Set(
-          EXERCISES.map((item) => item.targetMuscle).filter(
-            (target): target is string => Boolean(target),
-          ),
-        ),
-      ),
-    ],
-    [],
-  );
-
-  const equipmentOptions = React.useMemo<string[]>(
-    () => [
-      "All",
-      ...Array.from(new Set(EXERCISES.flatMap((item) => item.equipment))),
-    ],
-    [],
-  );
-
-  const filteredExercises = React.useMemo(() => {
-    const query = exerciseSearch.trim().toLowerCase();
-
-    return EXERCISES.filter((exercise) => {
-      const matchesSearch =
-        query.length === 0 || exercise.name.toLowerCase().includes(query);
-      const matchesTarget =
-        selectedTarget === "All" || exercise.targetMuscle === selectedTarget;
-      const matchesEquipment =
-        selectedEquipment === "All" ||
-        exercise.equipment.includes(selectedEquipment);
-      return matchesSearch && matchesTarget && matchesEquipment;
-    });
-  }, [exerciseSearch, selectedTarget, selectedEquipment]);
-
-  const pendingExerciseIdSet = React.useMemo(
-    () => new Set(pendingExerciseIds),
-    [pendingExerciseIds],
-  );
-
-  React.useEffect(() => {
-    if (!message) return;
-    const timer = setTimeout(() => {
-      setMessage(null);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [message]);
 
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
@@ -101,37 +44,42 @@ const ExerciseDetailScreen = () => {
   }, [isLoading, user, router]);
 
   React.useEffect(() => {
-    const loadSessions = async () => {
-      if (!user) return;
+    const loadSession = async () => {
+      if (!user || !params.workoutSessionId) return;
 
-      if (!selectedWorkoutSession) {
-        const selected = workoutSessions.find(
-          (session) => session._id === params.workoutSessionId,
+      setIsFetching(true);
+      try {
+        const res = await fetchWithAuth(
+          `${BASE_URL}/api/database/workout-session?id=${params.workoutSessionId}`,
+          { method: "GET" },
         );
 
-        if (selected) {
-          setSelectedWorkoutSession(selected);
+        if (res.ok) {
+          const fetchedData = await res.json();
+          setSelectedWorkoutSession(fetchedData);
+        } else if (res.status === 404) {
+          router.replace("/not-found");
+          return;
         } else {
-          const cachedSessions = await workoutSessionCache?.getWorkoutSessions(
-            WORKOUT_SESSIONS_KEY_NAME,
-          );
-          if (cachedSessions && cachedSessions.length > 0) {
-            const selected: WorkoutSession | undefined = cachedSessions.find(
-              (session) => session._id === params.workoutSessionId,
-            );
-            if (selected) {
-              setSelectedWorkoutSession(selected);
-            }
-          }
+          throw new Error();
         }
+      } catch (error) {
+        if (error instanceof Error) {
+          showToast(
+            "errorToast",
+            "Cannot load the selected workout session. Check your internet connection.",
+          );
+        }
+      } finally {
+        setIsFetching(false);
       }
     };
 
-    loadSessions();
-  }, [fetchWithAuth, user]);
+    loadSession();
+  }, [fetchWithAuth, user, params.workoutSessionId, router]);
 
   const handleChangeWorkoutSessionStatus = async (status: string) => {
-    const startedAt = new Date();
+    const current = new Date();
     try {
       const res = await fetchWithAuth(
         `${BASE_URL}/api/database/workout-session-status`,
@@ -143,48 +91,34 @@ const ExerciseDetailScreen = () => {
           body: JSON.stringify({
             _id: params.workoutSessionId,
             status,
-            startedAt,
+            current,
           }),
         },
       );
 
       if (res.ok) {
         if (params.workoutSessionId) {
+          const patch =
+            status === "In progress"
+              ? { status, startedAt: current }
+              : { status, finishedAt: current };
+
           setSelectedWorkoutSession((prev) => {
             if (!prev) return prev;
-            return { ...prev, status };
+            return { ...prev, ...patch };
           });
-          if (status === "In progress") {
-            updateWorkoutSessions(params.workoutSessionId, {
-              status,
-              startedAt,
-            });
-            await workoutSessionCache?.updateWorkoutSessions(
-              WORKOUT_SESSIONS_KEY_NAME,
-              params.workoutSessionId,
-              { status, startedAt },
-            );
-          } else {
-            updateWorkoutSessions(params.workoutSessionId, {
-              status,
-            });
-            await workoutSessionCache?.updateWorkoutSessions(
-              WORKOUT_SESSIONS_KEY_NAME,
-              params.workoutSessionId,
-              { status },
-            );
-          }
+
+          updateWorkoutSessions(params.workoutSessionId, patch);
         }
       } else {
         throw new Error();
       }
     } catch (error) {
       if (error instanceof Error) {
-        setMessage({
-          ok: false,
-          message:
-            "Cannot change status of the workout session. Check your internet connection.",
-        });
+        showToast(
+          "errorToast",
+          "Cannot change status of the workout session. Check your internet connection.",
+        );
       }
     }
   };
@@ -271,26 +205,17 @@ const ExerciseDetailScreen = () => {
             params.workoutSessionId,
             selectedWorkoutSession,
           );
-          await workoutSessionCache?.updateWorkoutSessions(
-            WORKOUT_SESSIONS_KEY_NAME,
-            params.workoutSessionId,
-            selectedWorkoutSession,
-          );
         }
-        setMessage({
-          ok: true,
-          message: "Save workout session successfully!",
-        });
+        showToast("successToast", "Save workout session successfully!");
       } else {
         throw new Error();
       }
     } catch (error) {
       if (error instanceof Error) {
-        setMessage({
-          ok: false,
-          message:
-            "Cannot save your workout session. Check your internet connection.",
-        });
+        showToast(
+          "errorToast",
+          "Cannot save your workout session. Check your internet connection.",
+        );
       }
     }
   };
@@ -315,11 +240,7 @@ const ExerciseDetailScreen = () => {
         const response = await res.json();
         if (params.workoutSessionId) {
           updateWorkoutSessions(params.workoutSessionId, response.session);
-          await workoutSessionCache?.updateWorkoutSessions(
-            WORKOUT_SESSIONS_KEY_NAME,
-            params.workoutSessionId,
-            response.session,
-          );
+
           if (
             selectedWorkoutSession?.exercises.length &&
             exerciseIndex === selectedWorkoutSession.exercises.length - 1
@@ -328,106 +249,98 @@ const ExerciseDetailScreen = () => {
           }
           setSelectedWorkoutSession(response.session);
         }
-        setMessage({
-          ok: true,
-          message: "Delete exercise successfully!",
-        });
       } else {
         throw new Error();
       }
     } catch (error) {
       if (error instanceof Error) {
-        setMessage({
-          ok: false,
-          message: "Cannot delete exercise. Check your internet connection.",
-        });
+        showToast(
+          "errorToast",
+          "Cannot delete exercise. Check your internet connection.",
+        );
       }
     }
   };
 
-  const handleAddExercises = async () => {
-    const existingIds = new Set(
-      selectedWorkoutSession?.exercises.map((exercise) => exercise.id),
-    );
-
-    const chosen = EXERCISES.filter(
-      (exercise) =>
-        pendingExerciseIds.includes(exercise.id) &&
-        !existingIds.has(exercise.id),
-    ).map((exercise) => ({
-      id: exercise.id,
-      name: exercise.name,
-      targetMuscle: exercise.targetMuscle,
-      secondaryMuscles: exercise.secondaryMuscles,
-      equipment: exercise.equipment,
-      type: exercise.type,
-      sets: [
-        { id: 1, weight: null, reps: null },
-        { id: 2, weight: null, reps: null },
-        { id: 3, weight: null, reps: null },
-      ],
-      img: exercise.img,
-    }));
-
-    if (chosen.length === 0) {
-      setPendingExerciseIds([]);
-      setExerciseModalVisible(false);
-      return;
-    }
-
-    try {
-      const res = await fetchWithAuth(
-        `${BASE_URL}/api/database/workout-session-exercise`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            _id: params.workoutSessionId,
-            exercises: chosen,
-          }),
-        },
+  const handleConfirmAddExercises = React.useCallback(
+    async (selectedIds: number[]) => {
+      const existingIds = new Set(
+        selectedWorkoutSession?.exercises.map((exercise) => exercise.id),
       );
 
-      if (res.ok) {
-        const response = await res.json();
+      const chosen = EXERCISES.filter(
+        (exercise) =>
+          selectedIds.includes(exercise.id) && !existingIds.has(exercise.id),
+      ).map((exercise) => ({
+        id: exercise.id,
+        name: exercise.name,
+        targetMuscle: exercise.targetMuscle,
+        secondaryMuscles: exercise.secondaryMuscles,
+        equipment: exercise.equipment,
+        type: exercise.type,
+        sets: [
+          { id: 1, weight: null, reps: null },
+          { id: 2, weight: null, reps: null },
+          { id: 3, weight: null, reps: null },
+        ],
+        img: exercise.img,
+      }));
 
-        if (params.workoutSessionId) {
-          setSelectedWorkoutSession(response.session);
-          updateWorkoutSessions(params.workoutSessionId, response.session);
-          await workoutSessionCache?.updateWorkoutSessions(
-            WORKOUT_SESSIONS_KEY_NAME,
-            params.workoutSessionId,
-            response.session,
+      if (chosen.length === 0) {
+        setExerciseModalVisible(false);
+        return;
+      }
+
+      try {
+        const res = await fetchWithAuth(
+          `${BASE_URL}/api/database/workout-session-exercise`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              _id: params.workoutSessionId,
+              exercises: chosen,
+            }),
+          },
+        );
+
+        if (res.ok) {
+          const response = await res.json();
+          if (params.workoutSessionId) {
+            setSelectedWorkoutSession(response.session);
+            updateWorkoutSessions(params.workoutSessionId, response.session);
+          }
+          setExerciseModalVisible(false);
+        } else {
+          throw new Error();
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          showToast(
+            "errorToast",
+            "Cannot add exercises. Check your internet connection.",
           );
         }
-
-        setMessage({
-          ok: true,
-          message: "Add exercises successfully!",
-        });
-        setPendingExerciseIds([]);
-        setExerciseModalVisible(false);
-      } else {
-        throw new Error();
       }
-    } catch (error) {
-      if (error instanceof Error) {
-        setMessage({
-          ok: false,
-          message: "Cannot add exercises. Check your internet connection.",
-        });
-      }
-    }
-  };
+    },
+    [
+      selectedWorkoutSession,
+      params.workoutSessionId,
+      fetchWithAuth,
+      updateWorkoutSessions,
+    ],
+  );
 
-  if (!selectedWorkoutSession) {
+  if (isFetching) {
     return (
-      <View>
-        <Text className="text-text-primary">No workout session found</Text>
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#ffffff" />
       </View>
     );
+  }
+
+  if (!selectedWorkoutSession) {
+    return null;
   }
 
   return (
@@ -619,16 +532,15 @@ const ExerciseDetailScreen = () => {
                 </Text>
               </Pressable>
             </View>
-            <View className="flex flex-row mb-5 items-center justify-items-start w-9/10">
+            <View className="flex flex-row mb-5 items-center justify-items-start gap-4 w-9/10">
+              <Text className="text-text-secondary">Technique:</Text>
               <SelectDropdown
                 data={TECHNIQUES}
                 onSelect={(selectedItem, index) => {
                   handleChangeExerciseTechnique(selectedItem);
                 }}
                 defaultValue={
-                  !selectedWorkoutSession.exercises[exerciseIndex].technique
-                    ? null
-                    : selectedWorkoutSession.exercises[exerciseIndex].technique
+                  selectedWorkoutSession.exercises[exerciseIndex].technique
                 }
                 renderButton={(selectedItem, isOpened) => {
                   return (
@@ -722,15 +634,95 @@ const ExerciseDetailScreen = () => {
                 />
               </Pressable>
             </View>
-            {message && (
-              <View className="flex items-center mt-5 justify-center w-9/10 flex-1">
-                <Text
-                  className={`${message.ok ? "text-accent-2" : "text-accent-1"} text-center`}
+          </View>
+        )}
+      {selectedWorkoutSession.status === "Completed" &&
+        selectedWorkoutSession.exercises.length > 0 && (
+          <View>
+            <Text className="mt-1 font-sans-regular text-lg text-text-secondary">
+              All exercises ({selectedWorkoutSession.exercises.length})
+            </Text>
+            <ScrollView className="mt-2" showsVerticalScrollIndicator={false}>
+              {selectedWorkoutSession.exercises.map((exercise) => (
+                <View
+                  key={exercise.id}
+                  className="mb-3 rounded-3xl border-2 border-primary bg-background/80 p-4"
                 >
-                  {message.message}
-                </Text>
-              </View>
-            )}
+                  <View className="mb-4 flex flex-row items-center justify-between">
+                    <Text className="text-text-primary font-sans-bold text-xl">
+                      {exercise.name}
+                    </Text>
+                    {exercise.technique && exercise.technique !== "None" && (
+                      <View className="rounded-full border border-primary bg-primary/10 px-3 py-1">
+                        <Text
+                          className={`font-sans-medium text-xs ${
+                            exercise.technique === "Warm-up"
+                              ? "text-accent-2"
+                              : exercise.technique === "Failure"
+                                ? "text-accent-1"
+                                : "text-text-primary"
+                          }`}
+                        >
+                          {exercise.technique}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <Text className="font-sans-regular text-sm text-text-secondary mb-3">
+                    {exercise.targetMuscle}
+                    {exercise.secondaryMuscles.length > 0
+                      ? `, ${exercise.secondaryMuscles.join(", ")}`
+                      : ""}
+                    {"  "}• {exercise.type}
+                  </Text>
+
+                  <View className="w-full flex items-center mb-2">
+                    {/* Header */}
+                    <View className="flex flex-row items-center mb-3 w-full">
+                      <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
+                        Set
+                      </Text>
+                      <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
+                        Weight (kg)
+                      </Text>
+                      <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
+                        Reps
+                      </Text>
+                    </View>
+
+                    {/* Rows */}
+                    {exercise.sets.map((set, idx) => (
+                      <View
+                        key={set.id}
+                        className="flex flex-row items-center mb-2 w-full"
+                      >
+                        <Text className="flex-1 text-center text-white">
+                          {idx + 1}
+                        </Text>
+                        <Text className="flex-1 text-center text-text-primary">
+                          {set.weight ?? "-"}
+                        </Text>
+                        <Text className="flex-1 text-center text-white">
+                          {set.reps ?? "-"}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {exercise.note ? (
+                    <View className="w-full mt-2 rounded-2xl border-2 border-primary p-3">
+                      <Text className="text-text-secondary text-xs font-sans-semibold mb-1">
+                        Note
+                      </Text>
+                      <Text className="text-white font-sans-regular">
+                        {exercise.note}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ))}
+            </ScrollView>
           </View>
         )}
 
@@ -741,166 +733,25 @@ const ExerciseDetailScreen = () => {
           </Text>
         </View>
       )}
-
-      <Pressable
-        onPress={() => {
-          setPendingExerciseIds(
-            selectedWorkoutSession.exercises.map((exercise) => exercise.id),
-          );
-          setExerciseModalVisible(true);
-        }}
-        className="flex flex-row items-center justify-center gap-1 rounded-full  bg-primary py-2"
-      >
-        <SymbolView name="plus" tintColor="#717171" size={10} />
-        <Text className="text-text-secondary font-sans-semibold">
-          Add new exercise
-        </Text>
-      </Pressable>
-      <Modal
+      {selectedWorkoutSession.status !== "Completed" && (
+        <Pressable
+          onPress={() => setExerciseModalVisible(true)}
+          className="flex flex-row items-center justify-center gap-1 rounded-full bg-primary py-2"
+        >
+          <SymbolView name="plus" tintColor="#717171" size={10} />
+          <Text className="text-text-secondary font-sans-semibold">
+            Add new exercise
+          </Text>
+        </Pressable>
+      )}
+      <ExercisesPickerModal
         visible={isExerciseModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setExerciseModalVisible(false)}
-      >
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="max-h-full rounded-t-[28px] border border-primary bg-background p-4">
-            <View className="mb-3 flex-row items-center justify-between">
-              <Text className="font-sans-semibold text-xl text-text-primary">
-                Choose exercises
-              </Text>
-              <Pressable onPress={() => setExerciseModalVisible(false)}>
-                <Text className="font-sans-semibold text-base text-accent-2">
-                  Close
-                </Text>
-              </Pressable>
-            </View>
-
-            <TextInput
-              value={exerciseSearch}
-              onChangeText={setExerciseSearch}
-              placeholder="Search exercises"
-              placeholderTextColor="#7A7A7A"
-              className="mb-3 rounded-2xl border border-primary bg-background px-4 py-3 font-sans-regular text-base text-text-primary"
-            />
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="mb-3"
-            >
-              {targetMuscles.map((target) => {
-                const selected = target === selectedTarget;
-                return (
-                  <Pressable
-                    key={target}
-                    onPress={() => setSelectedTarget(target)}
-                    className={`mr-2 rounded-full border px-3 py-2 ${
-                      selected
-                        ? "border-accent-2 bg-accent-2"
-                        : "border-primary bg-background"
-                    }`}
-                  >
-                    <Text
-                      className={`font-sans-medium text-sm ${selected ? "text-background" : "text-text-primary"}`}
-                    >
-                      {target}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="mb-3"
-            >
-              {equipmentOptions.map((equipment) => {
-                const selected = equipment === selectedEquipment;
-                return (
-                  <Pressable
-                    key={equipment}
-                    onPress={() => setSelectedEquipment(equipment)}
-                    className={`mr-2 rounded-full border px-3 py-2 ${
-                      selected
-                        ? "border-accent-1 bg-accent-1"
-                        : "border-primary bg-background"
-                    }`}
-                  >
-                    <Text
-                      className={`font-sans-medium text-sm ${selected ? "text-background" : "text-text-primary"}`}
-                    >
-                      {equipment}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            <FlatList
-              data={filteredExercises}
-              keyExtractor={(item) => item.id.toString()}
-              style={{ maxHeight: 320 }}
-              contentContainerStyle={{ paddingBottom: 8 }}
-              showsVerticalScrollIndicator={false}
-              removeClippedSubviews
-              initialNumToRender={10}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-              renderItem={({ item: exercise }) => {
-                const selected = pendingExerciseIdSet.has(exercise.id);
-
-                return (
-                  <Pressable
-                    key={exercise.id}
-                    onPress={() => {
-                      setPendingExerciseIds((current) =>
-                        current.includes(exercise.id)
-                          ? current.filter((id) => id !== exercise.id)
-                          : [...current, exercise.id],
-                      );
-                    }}
-                    className={`mb-3 rounded-2xl border p-3 ${
-                      selected
-                        ? "border-accent-2 bg-accent-2/10"
-                        : "border-primary bg-background"
-                    }`}
-                  >
-                    <View className="flex-row items-center gap-3">
-                      <Image
-                        source={{ uri: exercise.img }}
-                        className="h-15 w-15 rounded-xl"
-                        resizeMode="cover"
-                      />
-                      <View className="flex-1">
-                        <Text className="font-sans-semibold text-lg text-text-primary">
-                          {exercise.name}
-                        </Text>
-                        <Text className="font-sans-regular text-sm text-text-secondary">
-                          {exercise.targetMuscle}
-                          {exercise.secondaryMuscles.length > 0
-                            ? `, ${exercise.secondaryMuscles.join(", ")}`
-                            : ""}
-                          {"  "}• {exercise.type}
-                        </Text>
-                      </View>
-                    </View>
-                  </Pressable>
-                );
-              }}
-            />
-
-            <Pressable
-              onPress={handleAddExercises}
-              className="mt-4 rounded-full bg-accent-2 px-4 py-3"
-            >
-              <Text className="text-center font-sans-semibold text-base text-background">
-                Add selected exercises
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setExerciseModalVisible(false)}
+        existingExerciseIds={selectedWorkoutSession.exercises.map(
+          (exercise) => exercise.id,
+        )}
+        onConfirm={handleConfirmAddExercises}
+      />
     </ScrollView>
   );
 };

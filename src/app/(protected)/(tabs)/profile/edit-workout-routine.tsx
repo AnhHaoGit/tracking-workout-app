@@ -6,11 +6,11 @@ import { SymbolView } from "expo-symbols";
 import * as React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useUser } from "@/context/user";
+import showToast from "@/utils/toast";
 
 const EditWorkoutRoutine = () => {
   const [isOnTheGoChecked, setOnTheGoChecked] = React.useState(false);
   const [isWeeklyFixedChecked, setWeeklyFixedChecked] = React.useState(false);
-  const [message, setMessage] = React.useState<string | null>(null);
   const { fetchWithAuth, user } = useAuth();
   const { userData, updateUserData } = useUser();
 
@@ -42,13 +42,6 @@ const EditWorkoutRoutine = () => {
     }
   };
 
-  const handleShowMessage = (receivedMessage: string) => {
-    setMessage(receivedMessage);
-    setTimeout(() => {
-      setMessage(null);
-    }, 2000);
-  };
-
   const handleChangeRoutine = async (routine: string) => {
     try {
       const response = await fetchWithAuth(`${BASE_URL}/api/database/routine`, {
@@ -56,87 +49,103 @@ const EditWorkoutRoutine = () => {
         body: JSON.stringify({ routine, sub: user?.sub }),
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error();
+      }
       if (userData !== null) {
         const updatedUserData = { ...userData, routine };
         updateUserData(updatedUserData);
         userCache?.saveUserData(USER_KEY_NAME, updatedUserData);
+        showToast("successToast", "Update workout routine successfully!");
       }
-
-      handleShowMessage(data.message);
     } catch (error) {
-      handleShowMessage("Cannot update workout routine. Try again later.");
+      if (error instanceof Error) {
+        showToast(
+          "errorToast",
+          "Cannot update workout routine. Try again later.",
+        );
+      }
     }
   };
 
   return (
-    <View className="flex-1 flex flex-col items-center bg-background">
-      <SymbolView
-        name="calendar.badge.clock"
-        tintColor="#ffffff"
-        weight="bold"
-        size={80}
-      />
-      <Text className="font-sans-heavy text-4xl text-text-primary text-center">
-        Select and edit your workout routine
-      </Text>
-      <View className="m-15 flex flex-col gap-4">
-        <View style={{ width: itemSize1 }}>
-          <View style={styles.checkBoxSection} className="bg-primary">
-            <Checkbox
-              style={styles.checkbox}
-              value={isOnTheGoChecked}
-              onValueChange={handleCheckOnTheGo}
-              color="#ff9100"
-            />
-            <View>
-              <Text style={styles.paragraph} className="font-sans-bold">
-                On-the-Go
-              </Text>
-              <Text className="text-text-secondary text-xs">
-                Plan a one-time workout whenever you're ready.
-              </Text>
-            </View>
-          </View>
-          <View></View>
-        </View>
-
-        <View
-          style={{ width: itemSize1 }}
-          className="flex flex-row justify-between items-center"
-        >
-          <View style={styles.checkBoxSection} className="bg-primary">
-            <Checkbox
-              style={styles.checkbox}
-              value={isWeeklyFixedChecked}
-              onValueChange={handleCheckWeeklyFixed}
-              color="#ff9100"
-            />
-            <View>
-              <Text style={styles.paragraph} className="font-sans-bold">
-                Weekly Fixed
-              </Text>
-              <Text className="text-text-secondary text-xs">
-                Keep your training consistent every single week.
-              </Text>
-            </View>
-          </View>
-          <Pressable
-            className="flex bg-primary justify-center items-center"
-            style={styles.editButton}
-          >
-            <SymbolView
-              name="pencil"
-              tintColor="#ffffff"
-              weight="bold"
-              size={15}
-            />
-          </Pressable>
-        </View>
+    <View className="flex-1 items-center bg-background px-4 pt-10">
+      {/* Header */}
+      <View className="h-20 w-20 items-center justify-center   ">
+        <SymbolView
+          name="calendar.badge.clock"
+          tintColor="#ffffff"
+          weight="bold"
+          size={100}
+        />
       </View>
-      <Text className="font-sans-regular text-ms text-accent-2 text-center">
-        {message}
+
+      <Text className="mt-5 text-center font-sans-bold text-2xl text-text-primary">
+        Select your workout routine
       </Text>
+      <Text className="mt-1 text-center font-sans-regular text-sm text-text-secondary">
+        Choose how you'd like to plan your training
+      </Text>
+
+      {/* Options */}
+      <View className="mt-8 w-full gap-4">
+        {/* On-the-Go */}
+        <Pressable
+          onPress={() => handleCheckOnTheGo(!isOnTheGoChecked)}
+          className={`w-full flex-row items-center gap-3 rounded-3xl border-2 p-4 ${
+            isOnTheGoChecked ? "border-accent-2" : "border-primary"
+          } bg-background/80`}
+        >
+          <Checkbox
+            value={isOnTheGoChecked}
+            onValueChange={handleCheckOnTheGo}
+            color={isOnTheGoChecked ? "#ff9100" : undefined}
+            style={{ borderRadius: 100 }}
+          />
+          <View className="flex-1">
+            <Text className="font-sans-bold text-lg text-text-primary">
+              On-the-Go
+            </Text>
+            <Text className="mt-0.5 font-sans-regular text-sm text-text-secondary">
+              Plan a one-time workout whenever you're ready.
+            </Text>
+          </View>
+        </Pressable>
+
+        {/* Weekly Fixed */}
+        <Pressable
+          onPress={() => handleCheckWeeklyFixed(!isWeeklyFixedChecked)}
+          className={`w-full flex-row items-center gap-3 rounded-3xl border-2 p-4 ${
+            isWeeklyFixedChecked ? "border-accent-2" : "border-primary"
+          } bg-background/80`}
+        >
+          <Checkbox
+            value={isWeeklyFixedChecked}
+            onValueChange={handleCheckWeeklyFixed}
+            color={isWeeklyFixedChecked ? "#ff9100" : undefined}
+            style={{ borderRadius: 100 }}
+          />
+          <View className="flex-1">
+            <Text className="font-sans-bold text-lg text-text-primary">
+              Weekly Fixed
+            </Text>
+            <Text className="mt-0.5 font-sans-regular text-sm text-text-secondary">
+              Keep your training consistent every single week.
+            </Text>
+          </View>
+
+          {isWeeklyFixedChecked && (
+            <Pressable className="h-9 w-9 items-center justify-center rounded-full border border-primary bg-primary/10">
+              <SymbolView
+                name="pencil"
+                tintColor="#ffffff"
+                weight="bold"
+                size={15}
+              />
+            </Pressable>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 };

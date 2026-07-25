@@ -1,6 +1,6 @@
 import { BASE_URL, WORKOUT_SESSIONS_KEY_NAME } from "@/constants/constants";
 import { useAuth } from "@/context/auth";
-import { workoutSessionCache } from "@/secure-store/workout-sessions";
+// import { workoutSessionCache } from "@/secure-store/workout-sessions";
 import { WorkoutSession } from "@/constants/type";
 import { Link, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
@@ -9,8 +9,11 @@ import React from "react";
 import { Dimensions, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useWorkoutSessions } from "@/context/workout-sessions";
+import showToast from "@/utils/toast";
 
 const SafeAreaView = styled(RNSafeAreaView);
+
+const screenWidth = Dimensions.get("window").width;
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -71,8 +74,6 @@ const Calendar = () => {
   const [isDisplayingListView, setIsDisplayingListView] =
     React.useState<boolean>(false);
 
-  const [errorMessage, setErrorMessage] = React.useState("");
-
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
       router.replace("/login");
@@ -81,16 +82,15 @@ const Calendar = () => {
 
   React.useEffect(() => {
     const loadSessions = async () => {
-      setErrorMessage("");
       if (!user) return;
 
-      const cachedSessions = await workoutSessionCache?.getWorkoutSessions(
-        WORKOUT_SESSIONS_KEY_NAME,
-      );
+      // const cachedSessions = await workoutSessionCache?.getWorkoutSessions(
+      //   WORKOUT_SESSIONS_KEY_NAME,
+      // );
 
-      if (cachedSessions) {
-        saveWorkoutSessions(cachedSessions);
-      } else {
+      // if (cachedSessions) {
+      //   saveWorkoutSessions(cachedSessions);
+      // } else {
         try {
           const response = await fetchWithAuth(
             `${BASE_URL}/api/database/workout-sessions`,
@@ -100,19 +100,20 @@ const Calendar = () => {
           );
           if (response.ok) {
             const data = await response.json();
-            await workoutSessionCache?.saveWorkoutSessions(
-              WORKOUT_SESSIONS_KEY_NAME,
-              data,
-            );
+            // await workoutSessionCache?.saveWorkoutSessions(
+            //   WORKOUT_SESSIONS_KEY_NAME,
+            //   data,
+            // );
             saveWorkoutSessions(data);
           }
         } catch (error) {
           console.error("Failed to load workout sessions", error);
-          setErrorMessage(
+          showToast(
+            "errorToast",
             "Failed to load workout sessions. Check your Internet connection",
           );
         }
-      }
+      // }
     };
 
     loadSessions();
@@ -152,10 +153,7 @@ const Calendar = () => {
     return map;
   }, [workoutSessions]);
 
-  const screenWidth = Dimensions.get("window").width;
-
   const handleDeleteWorkoutSession = async (_id: string) => {
-    setErrorMessage("");
     try {
       const res = await fetchWithAuth(
         `${BASE_URL}/api/database/workout-sessions`,
@@ -170,16 +168,17 @@ const Calendar = () => {
 
       if (res.ok) {
         deleteWorkoutSession(_id);
-        await workoutSessionCache?.deleteWorkoutSession(
-          WORKOUT_SESSIONS_KEY_NAME,
-          _id,
-        );
+        // await workoutSessionCache?.deleteWorkoutSession(
+        //   WORKOUT_SESSIONS_KEY_NAME,
+        //   _id,
+        // );
       } else {
         throw new Error();
       }
     } catch (error) {
       if (error instanceof Error) {
-        setErrorMessage(
+        showToast(
+          "errorToast",
           "Cannot delete workout session. Check your internet connection.",
         );
       }
@@ -224,12 +223,6 @@ const Calendar = () => {
           </View>
         </View>
 
-        {errorMessage !== "" ? (
-          <Text className="mt-4 font-sans-regular text-sm text-accent-1">
-            {errorMessage}
-          </Text>
-        ) : null}
-
         {isDisplayingListView ? (
           <View className="mt-6">
             {workoutSessions.length === 0 ? (
@@ -268,7 +261,7 @@ const Calendar = () => {
                         </Text>
                         <View className="rounded-full border border-primary bg-primary/10 px-3 py-1 flex items-center justify-center">
                           <Text
-                            className={`font-sans-medium text-xs ${session.status === "Not started yet" && "text-accent-1"} ${session.status === "In progress" && "text-accent-2"}`}
+                            className={`font-sans-medium text-xs ${session.status === "Not started yet" && "text-accent-1"} ${session.status === "In progress" && "text-accent-2"} ${session.status === "Completed" && "text-accent-3"}`}
                           >
                             {session.status ?? "Not started yet"}
                           </Text>

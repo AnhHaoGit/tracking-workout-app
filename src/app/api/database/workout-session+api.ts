@@ -32,3 +32,35 @@ export const POST = withAuth(async (req, user) => {
     );
   }
 });
+
+export const GET = withAuth(async (_req, user) => {
+  try {
+    const { searchParams } = new URL(_req.url);
+    const _id = searchParams.get("id");
+
+    if (!_id || !ObjectId.isValid(_id)) {
+      return Response.json({ error: "Invalid session id" }, { status: 400 });
+    }
+
+    const db = await connectToDatabase();
+    const result = await db.collection("workoutSessions").findOne({
+      _id: new ObjectId(_id),
+      userId: user.sub,
+    });
+
+    if (!result) {
+      return Response.json(
+        { error: "Session not found or not authorized" },
+        { status: 404 },
+      );
+    }
+
+    return Response.json(result);
+  } catch (error) {
+    console.error("Error fetching workout session:", error);
+    return Response.json(
+      { error: "Cannot fetch workout session" },
+      { status: 500 },
+    );
+  }
+});
