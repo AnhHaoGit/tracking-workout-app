@@ -5,7 +5,6 @@ import {
   GOOGLE_REDIRECT_URI,
   JWT_EXPIRATION_TIME,
   JWT_SECRET,
-  REFRESH_TOKEN_EXPIRY,
 } from "../../../constants/constants";
 import { connectToDatabase } from "../../../utils/connect-db";
 
@@ -78,9 +77,6 @@ export async function POST(request: Request) {
   // Current timestamp in seconds
   const issuedAt = Math.floor(Date.now() / 1000);
 
-  // Generate a unique jti (JWT ID) for the refresh token
-  const jti = crypto.randomUUID();
-
   if (!JWT_SECRET) {
     return Response.json({ error: "Server misconfiguration" }, { status: 500 });
   }
@@ -97,29 +93,10 @@ export async function POST(request: Request) {
     .setIssuedAt(issuedAt)
     .sign(jwtSecretBytes);
 
-  // const refreshToken = await new jose.SignJWT({
-  //   sub,
-  //   jti, // Include a unique ID for this refresh token
-  //   type: "refresh",
-  //   // Include all user information in the refresh token
-  //   // This ensures we have the data when refreshing tokens
-  //   name: (userInfo as any).name,
-  //   email: (userInfo as any).email,
-  //   picture: (userInfo as any).picture,
-  //   given_name: (userInfo as any).given_name,
-  //   family_name: (userInfo as any).family_name,
-  //   email_verified: (userInfo as any).email_verified,
-  // })
-  //   .setProtectedHeader({ alg: "HS256" })
-  //   .setExpirationTime(REFRESH_TOKEN_EXPIRY)
-  //   .setIssuedAt(issuedAt)
-  //   .sign(new TextEncoder().encode(JWT_SECRET));
-
-  const db = await connectToDatabase();
-  const usersCollection = db.collection("users");
-  const decoded = jose.decodeJwt(accessToken);
-
   try {
+    const db = await connectToDatabase();
+    const usersCollection = db.collection("users");
+    const decoded = jose.decodeJwt(accessToken);
     const existingUser = await usersCollection.findOne({ sub: decoded.sub });
 
     if (!existingUser) {
@@ -147,6 +124,5 @@ export async function POST(request: Request) {
 
   return Response.json({
     accessToken,
-    // refreshToken,
   });
 }

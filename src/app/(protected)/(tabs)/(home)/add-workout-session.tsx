@@ -1,4 +1,4 @@
-import { BASE_URL, WORKOUT_SESSIONS_KEY_NAME } from "@/constants/constants";
+import { BASE_URL } from "@/constants/constants";
 import { EXERCISES } from "@/constants/exercises";
 import { useAuth } from "@/context/auth";
 import { WorkoutExercise } from "@/constants/type";
@@ -9,14 +9,7 @@ import { useWorkoutSessions } from "@/context/workout-sessions";
 import ExercisesPickerModal from "@/components/ExercisesPickerModal";
 
 import React from "react";
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import showToast from "@/utils/toast";
 
 const suggestedNames = [
@@ -26,10 +19,16 @@ const suggestedNames = [
   "Chest Day",
   "Back Day",
   "Arm Day",
+  "Shoulder Day",
+  "Core Day",
+  "Glute Day",
   "Stretching",
   "Cardio",
   "Upper Body",
   "Lower Body",
+  "Full Body",
+  "Mobility",
+  "PR Attempt",
 ];
 
 const AddWorkoutSession = () => {
@@ -166,24 +165,17 @@ const AddWorkoutSession = () => {
       <Text className="mb-2 font-sans-semibold text-lg text-text-primary">
         Name your workout session
       </Text>
-      <TextInput
-        value={title}
-        onChangeText={(value) => {
-          setTitle(value);
-        }}
-        placeholder="Pull Day, Cardio..."
-        placeholderTextColor="#7A7A7A"
-        className="mb-4 rounded-2xl border border-primary bg-background px-4 py-3 font-sans-regular text-base text-text-primary"
-      />
 
-      <View className="flex-row flex-wrap">
+      <View className="flex-row flex-wrap mt-2">
         {suggestedNames.map((name) => (
           <Pressable
             key={name}
             onPress={() => setTitle(name)}
-            className="mb-2 mr-2 rounded-full border border-primary px-3 py-2"
+            className={`mb-2 mr-2 rounded-full border ${name === title ? "border-accent-2" : "border-primary"}  px-3 py-2`}
           >
-            <Text className="font-sans-medium text-sm text-text-primary">
+            <Text
+              className={`font-sans-medium text-sm ${name === title ? "text-accent-2" : "text-text-primary"}`}
+            >
               {name}
             </Text>
           </Pressable>

@@ -11,29 +11,31 @@ import {
   View,
 } from "react-native";
 
-type ExercisesPickerModalProps = {
+type ExercisePickerSingleModalProps = {
   visible: boolean;
   onClose: () => void;
-  existingExerciseIds: number[];
-  onConfirm: (selectedIds: number[]) => void;
+
+  onSelectExercise: (chosenExercise: { id: number; name: string }) => void;
 };
 
-const ExercisesPickerModal = ({
+const ExercisePickerSingleModal = ({
   visible,
   onClose,
-  existingExerciseIds,
-  onConfirm,
-}: ExercisesPickerModalProps) => {
+  onSelectExercise,
+}: ExercisePickerSingleModalProps) => {
   const [exerciseSearch, setExerciseSearch] = React.useState("");
   const [selectedTarget, setSelectedTarget] = React.useState("All");
   const [selectedEquipment, setSelectedEquipment] = React.useState("All");
   const [pendingExerciseIds, setPendingExerciseIds] = React.useState<number[]>(
     [],
   );
+  const [chosenExercise, setChosenExercise] = React.useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   React.useEffect(() => {
     if (visible) {
-      setPendingExerciseIds(existingExerciseIds);
       setExerciseSearch("");
       setSelectedTarget("All");
       setSelectedEquipment("All");
@@ -82,7 +84,7 @@ const ExercisesPickerModal = ({
   );
 
   const handleConfirm = () => {
-    onConfirm(pendingExerciseIds);
+    if (chosenExercise && onSelectExercise) onSelectExercise(chosenExercise);
   };
 
   return (
@@ -96,7 +98,7 @@ const ExercisesPickerModal = ({
         <View className="max-h-full rounded-t-[28px] border border-primary bg-background p-4">
           <View className="mb-3 flex-row items-center justify-between">
             <Text className="font-sans-semibold text-xl text-text-primary">
-              Choose exercises
+              Select exercise
             </Text>
             <Pressable onPress={onClose}>
               <Text className="font-sans-semibold text-base text-accent-2">
@@ -178,16 +180,15 @@ const ExercisesPickerModal = ({
             maxToRenderPerBatch={10}
             windowSize={5}
             renderItem={({ item: exercise }) => {
-              const selected = pendingExerciseIdSet.has(exercise.id);
+              const selected = chosenExercise?.id === exercise.id;
               return (
                 <Pressable
                   key={exercise.id}
                   onPress={() => {
-                    setPendingExerciseIds((current) =>
-                      current.includes(exercise.id)
-                        ? current.filter((id) => id !== exercise.id)
-                        : [...current, exercise.id],
-                    );
+                    setChosenExercise({
+                      id: exercise.id,
+                      name: exercise.name,
+                    });
                   }}
                   className={`mb-3 rounded-2xl border p-3 ${
                     selected
@@ -224,7 +225,7 @@ const ExercisesPickerModal = ({
             className="mt-4 rounded-full bg-accent-2 px-4 py-3"
           >
             <Text className="text-center font-sans-semibold text-base text-background">
-              Add selected exercises
+              Select exercise
             </Text>
           </Pressable>
         </View>
@@ -233,4 +234,4 @@ const ExercisesPickerModal = ({
   );
 };
 
-export default React.memo(ExercisesPickerModal);
+export default React.memo(ExercisePickerSingleModal);

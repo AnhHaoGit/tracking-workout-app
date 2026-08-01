@@ -1,12 +1,5 @@
-import {
-  BASE_URL,
-  itemSize1,
-  // USER_KEY_NAME,
-  WORKOUT_SESSIONS_KEY_NAME,
-} from "@/constants/constants";
+import { BASE_URL } from "@/constants/constants";
 import { useUser } from "@/context/user";
-// import { userCache } from "@/secure-store/user";
-// import { workoutSessionCache } from "@/secure-store/workout-sessions";
 import { Link, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { styled } from "nativewind";
@@ -23,6 +16,7 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../../../context/auth";
 import { useWorkoutSessions } from "@/context/workout-sessions";
 import showToast from "@/utils/toast";
+import WeeklyStreak from "@/components/WeeklyStreak";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -68,61 +62,61 @@ const HomeScreen = () => {
       });
   }, [workoutSessions]);
 
-  React.useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user || userData) return;
+  // React.useEffect(() => {
+  //   const fetchUserData = async () => {
+  //     if (!user || userData) return;
 
-      try {
-        console.log("Fetching user data");
-        const response = await fetchWithAuth(`${BASE_URL}/api/database/user`, {
-          method: "GET",
-        });
+  //     try {
+  //       console.log("Fetching user data");
+  //       const response = await fetchWithAuth(`${BASE_URL}/api/database/user`, {
+  //         method: "GET",
+  //       });
 
-        if (response.ok) {
-          const data = await response.json();
-          updateUserData(data);
-        } else {
-          throw new Error();
-        }
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error("Failed to load user data", error);
-          showToast(
-            "errorToast",
-            "Failed to load user data. Check your Internet connection",
-          );
-        }
-      }
-    };
-    fetchUserData();
-  }, [fetchWithAuth, user]); // KHÔNG đưa userData vào đây
+  //       if (response.ok) {
+  //         const data = await response.json();
+  //         updateUserData(data);
+  //       } else {
+  //         throw new Error();
+  //       }
+  //     } catch (error) {
+  //       if (error instanceof Error) {
+  //         console.error("Failed to load user data", error);
+  //         showToast(
+  //           "errorToast",
+  //           "Failed to load user data. Check your Internet connection",
+  //         );
+  //       }
+  //     }
+  //   };
+  //   fetchUserData();
+  // }, [fetchWithAuth, user]);
 
-  React.useEffect(() => {
-    const loadSessions = async () => {
-      if (!user || workoutSessions.length > 0) return;
+  // React.useEffect(() => {
+  //   const loadSessions = async () => {
+  //     if (!user || workoutSessions.length > 0) return;
 
-      try {
-        console.log("Fetching workout sessions");
+  //     try {
+  //       console.log("Fetching workout sessions");
 
-        const response = await fetchWithAuth(
-          `${BASE_URL}/api/database/workout-sessions`,
-          { method: "GET" },
-        );
-        if (response.ok) {
-          const data = await response.json();
-          saveWorkoutSessions(data);
-        }
-      } catch (error) {
-        console.error("Failed to load workout sessions", error);
-        showToast(
-          "errorToast",
-          "Failed to load workout sessions. Check your Internet connection",
-        );
-      }
-    };
+  //       const response = await fetchWithAuth(
+  //         `${BASE_URL}/api/database/workout-sessions`,
+  //         { method: "GET" },
+  //       );
+  //       if (response.ok) {
+  //         const data = await response.json();
+  //         saveWorkoutSessions(data);
+  //       }
+  //     } catch (error) {
+  //       console.error("Failed to load workout sessions", error);
+  //       showToast(
+  //         "errorToast",
+  //         "Failed to load workout sessions. Check your Internet connection",
+  //       );
+  //     }
+  //   };
 
-    loadSessions();
-  }, [fetchWithAuth, user]);
+  //   loadSessions();
+  // }, [fetchWithAuth, user]);
 
   const handleDeleteWorkoutSession = async (_id: string) => {
     try {
@@ -171,11 +165,9 @@ const HomeScreen = () => {
           alignItems: "center",
           flexGrow: 1,
         }}
+        className="p-4"
       >
-        <View
-          className="h-1/7 w-full flex flex-row justify-between items-center"
-          style={{ width: itemSize1 }}
-        >
+        <View className="h-1/7 w-full flex flex-row justify-between items-center mb-6">
           <View className="flex flex-row items-center gap-4">
             <View className="aspect-square h-9/10 flex justify-center items-center bg-background border-primary border-2 rounded-full">
               <View className="w-9/10 h-9/10 flex justify-center items-center bg-primary border-2 rounded-full">
@@ -208,7 +200,9 @@ const HomeScreen = () => {
           )}
         </View>
 
-        <View className="mt-10 w-full" style={{ width: itemSize1 }}>
+        <WeeklyStreak workoutSessions={workoutSessions} />
+
+        <View className="w-full">
           <Text className="mb-3 font-sans-bold text-2xl text-text-primary">
             Today's workout
           </Text>

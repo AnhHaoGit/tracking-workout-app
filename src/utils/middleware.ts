@@ -1,6 +1,6 @@
 import * as jose from "jose";
 import { JWT_SECRET } from "../constants/constants";
-import { AuthUser } from "../context/auth";
+import { AuthUser } from "@/constants/type";
 
 /**
  * Middleware to authenticate API requests using JWT from Authorization header or cookies
@@ -20,7 +20,6 @@ export function withAuth<T extends Response>(
       if (authHeader && authHeader.startsWith("Bearer ")) {
         token = authHeader.split(" ")[1];
       }
-
 
       // If no token found in either place, return unauthorized
       if (!token) {

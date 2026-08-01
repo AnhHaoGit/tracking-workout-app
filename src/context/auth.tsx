@@ -11,6 +11,7 @@ import * as React from "react";
 import { BASE_URL, TOKEN_KEY_NAME } from "../constants/constants";
 import { tokenCache } from "../utils/cache";
 import { AuthUser } from "@/constants/type";
+import showToast from "@/utils/toast";
 
 const AuthContext = React.createContext({
   user: null as AuthUser | null,
@@ -106,46 +107,72 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           credentials: "same-origin",
         });
 
+        if (!tokenResponse.ok) {
+          throw new Error(
+            `Token exchange failed with status ${tokenResponse.status}`,
+          );
+        }
+
         const token = await tokenResponse.json();
+
+        if (!token.accessToken) {
+          throw new Error("No access token returned from server");
+        }
+
         const accessToken = token.accessToken;
         setAccessToken(accessToken);
 
-        tokenCache?.saveToken(TOKEN_KEY_NAME, accessToken);
+        await tokenCache?.saveToken(TOKEN_KEY_NAME, accessToken);
 
         const decoded = jose.decodeJwt(accessToken);
 
         setUser(decoded as AuthUser);
         router.replace("/(protected)/(tabs)/(home)");
       } catch (e) {
-        console.log(e);
+        console.error("Error handling auth response:", e);
+        showToast("errorToast", "Cannot sign you in. Try again later.");
       } finally {
         setIsLoading(false);
       }
     } else if (response?.type === "error") {
       setError(response.error as AuthError);
+      showToast("errorToast", "Cannot sign you in. Try again later.");
     }
   };
 
   const signIn = React.useCallback(async () => {
     try {
       if (!request) {
-        console.log("No request");
+        console.warn("Auth request not ready yet");
+
         return;
       }
       await promptAsync();
     } catch (e) {
-      console.log(e);
+      console.error("Error during sign in:", e);
+      showToast("errorToast", "Cannot sign you in. Try again later.");
     }
   }, [request, promptAsync]);
 
   const signOut = React.useCallback(async () => {
-    await tokenCache?.deleteToken(TOKEN_KEY_NAME);
-    setUser(null);
-    setAccessToken(null);
+    try {
+      await tokenCache?.deleteToken(TOKEN_KEY_NAME);
+    } catch (e) {
+      console.error("Error clearing token during sign out:", e);
+    } finally {
+      setUser(null);
+      setAccessToken(null);
+    }
   }, []);
+
   const fetchWithAuth = React.useCallback(
     async (url: string, options: RequestInit) => {
-      // For native: Use token in Authorization header
+      if (!accessToken) {
+        showToast("errorToast", "Your session has expired. Please sign in");
+        router.replace("/login");
+        return new Response(null, { status: 401 });
+      }
+
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -154,10 +181,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
       });
 
+      if (response.status === 401) {
+        await tokenCache?.deleteToken(TOKEN_KEY_NAME);
+        setUser(null);
+        setAccessToken(null);
+        showToast("errorToast", "Your session has expired. Please sign in.");
+        router.replace("/login");
+      }
+
       return response;
     },
-    [accessToken],
+    [accessToken, router],
   );
+
   const value = React.useMemo(
     () => ({
       user,

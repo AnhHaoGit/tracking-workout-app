@@ -9,9 +9,6 @@ import {
   Pressable,
   TextInput,
   StyleSheet,
-  Image,
-  FlatList,
-  Modal,
   ActivityIndicator,
 } from "react-native";
 import { useAuth } from "../../context/auth";
@@ -340,7 +337,14 @@ const ExerciseDetailScreen = () => {
   }
 
   if (!selectedWorkoutSession) {
-    return null;
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <Text className="font-sans-regular text-xl text-text-primary">
+          Cannot load the selected workout session. Check your internet
+          connection.
+        </Text>
+      </View>
+    );
   }
 
   return (

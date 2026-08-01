@@ -30,13 +30,6 @@ export const APP_SCHEME = process.env.EXPO_PUBLIC_SCHEME;
 export const JWT_SECRET = process.env.JWT_SECRET!;
 export const MONGODB_URI = process.env.MONGODB_URI!;
 
-// Size
-const { width } = Dimensions.get("window");
-export const PADDING = 0.05;
-export const MARGIN = 0.9;
-export const itemSize1 = width - width * PADDING * 2;
-export const itemSize2 = (width * MARGIN - width * PADDING * 2) / 2;
-export const itemSize3 = (width * MARGIN - width * PADDING * 2) / 3;
 
 export const tabs: AppTab[] = [
   { name: "(home)", title: "Home", symbol: "house.fill" },
@@ -75,4 +68,67 @@ export const informationOptions: InformationOptionProps[] = [
     symbolName: "person.crop.circle",
     title: "Profile picture",
   },
+];
+
+const repsWeightData = [
+  [
+    { label: "28/04/26", value: 49 },
+    { label: "06/05/26", value: 47.83 },
+    { label: "11/05/26", value: 50.17 },
+    { label: "15/05/26", value: 47.83 },
+    { label: "22/05/26", value: 51.25 },
+    { label: "27/05/26", value: 55 },
+    { label: "05/06/26", value: 53.75 },
+    { label: "11/06/26", value: 49 },
+    { label: "23/06/26", value: 53.75 },
+    { label: "30/06/26", value: 58.67 },
+    { label: "06/07/26", value: 57.33 },
+    { label: "13/07/26", value: 56 },
+    { label: "20/07/26", value: 51.33 },
+  ],
+  [
+    { label: "28/04/26", value: 55.25 },
+    { label: "06/05/26", value: 56.67 },
+    { label: "11/05/26", value: 55.25 },
+    { label: "15/05/26", value: 56.67 },
+    { label: "22/05/26", value: 61.5 },
+    { label: "27/05/26", value: 57 },
+    { label: "05/06/26", value: 58.5 },
+    { label: "11/06/26", value: 52 },
+    { label: "23/06/26", value: 57 },
+    { label: "30/06/26", value: 63.33 },
+    { label: "06/07/26", value: 63.33 },
+    { label: "13/07/26", value: 63.33 },
+    { label: "20/07/26", value: 58.08 },
+  ],
+  [
+    { label: "28/04/26", value: 52.42 },
+    { label: "06/05/26", value: 51 },
+    { label: "11/05/26", value: 56.67 },
+    { label: "15/05/26", value: 56.67 },
+    { label: "22/05/26", value: 61.5 },
+    { label: "27/05/26", value: 60 },
+    { label: "05/06/26", value: 57 },
+    { label: "11/06/26", value: 53.33 },
+    { label: "23/06/26", value: 57 },
+    { label: "30/06/26", value: 63.33 },
+    { label: "06/07/26", value: 63.33 },
+    { label: "13/07/26", value: 57 },
+    { label: "20/07/26", value: 55.25 },
+  ],
+  [
+    { label: "28/04/26", value: 0 },
+    { label: "06/05/26", value: 0 },
+    { label: "11/05/26", value: 0 },
+    { label: "15/05/26", value: 58.08 },
+    { label: "22/05/26", value: 0 },
+    { label: "27/05/26", value: 0 },
+    { label: "05/06/26", value: 60 },
+    { label: "11/06/26", value: 54.67 },
+    { label: "23/06/26", value: 60 },
+    { label: "30/06/26", value: 0 },
+    { label: "06/07/26", value: 0 },
+    { label: "13/07/26", value: 0 },
+    { label: "20/07/26", value: 0 },
+  ],
 ];

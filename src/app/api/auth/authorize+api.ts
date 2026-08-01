@@ -27,10 +27,6 @@ export async function GET(request: Request) {
 
   const redirectUri = url.searchParams.get("redirect_uri");
 
-  console.log("request.url:", request.url);
-  console.log("redirectUri:", redirectUri);
-  console.log("internalClient:", internalClient);
-
   let platform;
 
   if (redirectUri === APP_SCHEME) {

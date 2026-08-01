@@ -1,7 +1,7 @@
 import { SymbolView } from "expo-symbols";
 import { Text, View } from "react-native";
 
-const EditWorkoutRoutine = () => {
+const Achievements = () => {
   return (
     <View className="flex-1 flex flex-col items-center bg-background">
       <SymbolView
@@ -17,4 +17,4 @@ const EditWorkoutRoutine = () => {
   );
 };
 
-export default EditWorkoutRoutine;
+export default Achievements;
