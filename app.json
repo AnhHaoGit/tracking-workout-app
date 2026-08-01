@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/icon.png",
+      "supportsTablet": true,
       "bundleIdentifier": "com.anhhaonguyen.trackingworkoutapp"
     },
     "android": {

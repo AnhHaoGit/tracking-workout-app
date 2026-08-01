@@ -63,3 +63,8 @@ export type AuthUser = {
   exp?: number;
   type?: string;
 };
+
+export type StatisticsDataPoint = {
+  label: string;
+  value: number;
+};

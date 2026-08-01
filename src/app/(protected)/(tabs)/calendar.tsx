@@ -1,12 +1,19 @@
-import { BASE_URL, WORKOUT_SESSIONS_KEY_NAME } from "@/constants/constants";
+import { BASE_URL } from "@/constants/constants";
 import { useAuth } from "@/context/auth";
-// import { workoutSessionCache } from "@/secure-store/workout-sessions";
 import { WorkoutSession } from "@/constants/type";
 import { Link, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { styled } from "nativewind";
 import React from "react";
-import { Dimensions, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Dimensions,
+  InteractionManager,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useWorkoutSessions } from "@/context/workout-sessions";
 import showToast from "@/utils/toast";
@@ -26,7 +33,8 @@ const isoDate = (d: Date) =>
 const getMonthsBetween = (start: Date, end: Date) => {
   const months: { year: number; month: number }[] = [];
   const cur = new Date(start.getFullYear(), start.getMonth(), 1);
-  while (cur <= end) {
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
+  while (cur <= last) {
     months.push({ year: cur.getFullYear(), month: cur.getMonth() });
     cur.setMonth(cur.getMonth() + 1);
   }
@@ -34,14 +42,8 @@ const getMonthsBetween = (start: Date, end: Date) => {
 };
 
 const getMonthMatrix = (year: number, month: number) => {
-  // get the first day of month
   const first = new Date(year, month, 1);
-
-  // get the number of days in that month
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  // JS: 0=Sun..6=Sat. We want Monday-first index 0..6
-  // --> 0=Mon
   const firstWeekday = (first.getDay() + 6) % 7;
 
   const matrix: (Date | null)[][] = [];
@@ -63,8 +65,19 @@ const getMonthMatrix = (year: number, month: number) => {
   return matrix;
 };
 
+const FIRE_COLOR_COMPLETED = "#ff9100";
+const FIRE_COLOR_PENDING = "#5c3d1a";
+
+const getFireColor = (sessionsOnDay: WorkoutSession[]) => {
+  const allCompleted = sessionsOnDay.every((s) => s.status === "Completed");
+  return allCompleted ? FIRE_COLOR_COMPLETED : FIRE_COLOR_PENDING;
+};
+
 const isPickedClasses = "p-2 bg-white rounded-full";
 const isNotPickedClasses = "p-2 border-2 border-primary rounded-full";
+
+const MONTHS_PER_BATCH = 1;
+const BATCH_DELAY = 60;
 
 const Calendar = () => {
   const router = useRouter();
@@ -73,6 +86,9 @@ const Calendar = () => {
     useWorkoutSessions();
   const [isDisplayingListView, setIsDisplayingListView] =
     React.useState<boolean>(false);
+
+  // số tháng đang được render trong calendar view
+  const [visibleMonthsCount, setVisibleMonthsCount] = React.useState(1);
 
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
@@ -84,42 +100,34 @@ const Calendar = () => {
     const loadSessions = async () => {
       if (!user) return;
 
-      // const cachedSessions = await workoutSessionCache?.getWorkoutSessions(
-      //   WORKOUT_SESSIONS_KEY_NAME,
-      // );
+      try {
+        const response = await fetchWithAuth(
+          `${BASE_URL}/api/database/workout-sessions`,
+          {
+            method: "GET",
+          },
+        );
+        if (response.ok) {
+          const data = await response.json();
 
-      // if (cachedSessions) {
-      //   saveWorkoutSessions(cachedSessions);
-      // } else {
-        try {
-          const response = await fetchWithAuth(
-            `${BASE_URL}/api/database/workout-sessions`,
-            {
-              method: "GET",
-            },
-          );
-          if (response.ok) {
-            const data = await response.json();
-            // await workoutSessionCache?.saveWorkoutSessions(
-            //   WORKOUT_SESSIONS_KEY_NAME,
-            //   data,
-            // );
-            saveWorkoutSessions(data);
-          }
-        } catch (error) {
+          saveWorkoutSessions(data);
+        } else {
+          throw new Error();
+        }
+      } catch (error) {
+        if (error instanceof Error) {
           console.error("Failed to load workout sessions", error);
           showToast(
             "errorToast",
             "Failed to load workout sessions. Check your Internet connection",
           );
         }
-      // }
+      }
     };
 
     loadSessions();
   }, [fetchWithAuth, user]);
 
-  // get the month that has the oldest session
   const start = React.useMemo(() => {
     if (!workoutSessions || workoutSessions.length === 0) return new Date();
     const oldest = workoutSessions.reduce((min, s) => {
@@ -129,18 +137,46 @@ const Calendar = () => {
     return oldest;
   }, [workoutSessions]);
 
-  // set how large the calendar is
   const end = React.useMemo(() => {
-    const e = new Date(start);
-    e.setFullYear(e.getFullYear());
-    return e;
-  }, [start]);
+    if (!workoutSessions || workoutSessions.length === 0) return new Date();
+    const latest = workoutSessions.reduce((max, s) => {
+      const d = new Date(s.date);
+      return d > max ? d : max;
+    }, new Date(workoutSessions[0].date));
+    return latest;
+  }, [workoutSessions]);
 
   // get list of all months
   const months = React.useMemo(
     () => getMonthsBetween(start, end),
     [start, end],
   );
+
+  // mỗi khi danh sách tháng thay đổi (vd: data workout session mới load xong),
+  // reset lại về render 1 tháng rồi render dần tiếp
+  React.useEffect(() => {
+    setVisibleMonthsCount(1);
+  }, [months.length]);
+
+  // render dần từng tháng, đợi tương tác/animation hiện tại (chuyển màn hình) xong đã
+  React.useEffect(() => {
+    if (isDisplayingListView) return;
+    if (visibleMonthsCount >= months.length) return;
+
+    let timer: ReturnType<typeof setTimeout>;
+    const interaction = InteractionManager.runAfterInteractions(() => {
+      timer = setTimeout(() => {
+        setVisibleMonthsCount((c) =>
+          Math.min(c + MONTHS_PER_BATCH, months.length),
+        );
+      }, BATCH_DELAY);
+    });
+
+    return () => {
+      interaction.cancel();
+      clearTimeout(timer);
+    };
+  }, [visibleMonthsCount, months.length, isDisplayingListView]);
 
   const dayMap = React.useMemo(() => {
     const map = new Map<string, WorkoutSession[]>();
@@ -168,10 +204,6 @@ const Calendar = () => {
 
       if (res.ok) {
         deleteWorkoutSession(_id);
-        // await workoutSessionCache?.deleteWorkoutSession(
-        //   WORKOUT_SESSIONS_KEY_NAME,
-        //   _id,
-        // );
       } else {
         throw new Error();
       }
@@ -185,9 +217,12 @@ const Calendar = () => {
     }
   };
 
+  const visibleMonths = months.slice(0, visibleMonthsCount);
+  const isStillRenderingMonths = visibleMonthsCount < months.length;
+
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
         <View className="flex flex-row justify-between items-center">
           <Text className="text-3xl font-sans-bold text-text-primary">
             Calendar
@@ -285,7 +320,7 @@ const Calendar = () => {
           </View>
         ) : (
           <View className="flex gap-6 mt-6">
-            {months.map(({ year, month }) => {
+            {visibleMonths.map(({ year, month }) => {
               const matrix = getMonthMatrix(year, month);
               const monthName = new Date(year, month, 1).toLocaleString(
                 undefined,
@@ -339,7 +374,7 @@ const Calendar = () => {
                                   {hasSession ? (
                                     <SymbolView
                                       name="flame.fill"
-                                      tintColor="#ff9100"
+                                      tintColor={getFireColor(sessionsOnDay)}
                                       weight="bold"
                                       size={24}
                                     />
@@ -365,6 +400,12 @@ const Calendar = () => {
                 </View>
               );
             })}
+
+            {isStillRenderingMonths && (
+              <View className="items-center justify-center py-4">
+                <ActivityIndicator size="small" />
+              </View>
+            )}
           </View>
         )}
       </ScrollView>

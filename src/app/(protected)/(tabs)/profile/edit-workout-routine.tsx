@@ -1,4 +1,4 @@
-import { BASE_URL, itemSize1, USER_KEY_NAME } from "@/constants/constants";
+import { BASE_URL } from "@/constants/constants";
 import { useAuth } from "@/context/auth";
 import { Checkbox } from "expo-checkbox";
 import { SymbolView } from "expo-symbols";

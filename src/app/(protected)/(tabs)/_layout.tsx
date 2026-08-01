@@ -42,7 +42,6 @@ const TabLayout = () => {
           borderTopWidth: 1,
           borderColor: "#FF9100",
         },
-
         tabBarIconStyle: {
           width: tabBar.iconFrame,
           height: tabBar.iconFrame,
