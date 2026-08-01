@@ -36,6 +36,7 @@ const Reps = () => {
   }, [isLoading, user, router]);
 
   React.useEffect(() => {
+    let ignore = false;
     const fetchRepsData = async () => {
       if (!user) return;
       if (!selectedExercise) return;
@@ -59,23 +60,26 @@ const Reps = () => {
         if (response.ok) {
           const data = await response.json();
           repsCache.current.set(cacheKey, data);
-          setRepsData(data);
+          if (!ignore) setRepsData(data);
         } else {
           throw new Error();
         }
       } catch (error) {
-        if (error instanceof Error && !hasCached) {
+        if (!ignore && error instanceof Error && !hasCached) {
           showToast(
             "errorToast",
             "Cannot load reps statistics. Check your internet connection.",
           );
         }
       } finally {
-        setIsFetchingReps(false);
+        if (!ignore) setIsFetchingReps(false);
       }
     };
 
     fetchRepsData();
+    return () => {
+      ignore = true;
+    };
   }, [fetchWithAuth, user, selectedExercise]);
 
   const handleConfirmExercise = React.useCallback(

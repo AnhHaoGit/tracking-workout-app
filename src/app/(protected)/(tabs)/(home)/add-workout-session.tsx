@@ -85,7 +85,7 @@ const AddWorkoutSession = () => {
 
   const handleStepOneNext = () => {
     if (!title.trim()) {
-      showToast("infoToast", "Please enter a name for your workout session.");
+      showToast("infoToast", "Please select a name for your workout session.");
       return;
     }
 

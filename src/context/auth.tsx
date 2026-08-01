@@ -1,3 +1,5 @@
+import { AuthUser } from "@/constants/type";
+import showToast from "@/utils/toast";
 import {
   AuthError,
   AuthRequestConfig,
@@ -10,8 +12,6 @@ import * as jose from "jose";
 import * as React from "react";
 import { BASE_URL, TOKEN_KEY_NAME } from "../constants/constants";
 import { tokenCache } from "../utils/cache";
-import { AuthUser } from "@/constants/type";
-import showToast from "@/utils/toast";
 
 const AuthContext = React.createContext({
   user: null as AuthUser | null,
@@ -120,9 +120,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         const accessToken = token.accessToken;
-        setAccessToken(accessToken);
 
         await tokenCache?.saveToken(TOKEN_KEY_NAME, accessToken);
+        setAccessToken(accessToken);
 
         const decoded = jose.decodeJwt(accessToken);
 
@@ -182,11 +182,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (response.status === 401) {
-        await tokenCache?.deleteToken(TOKEN_KEY_NAME);
-        setUser(null);
-        setAccessToken(null);
-        showToast("errorToast", "Your session has expired. Please sign in.");
-        router.replace("/login");
+        try {
+          await tokenCache?.deleteToken(TOKEN_KEY_NAME);
+        } catch (e) {
+          console.error("Error clearing token during 401 handling:", e);
+        } finally {
+          setUser(null);
+          setAccessToken(null);
+          showToast("errorToast", "Your session has expired. Please sign in.");
+          router.replace("/login");
+        }
       }
 
       return response;

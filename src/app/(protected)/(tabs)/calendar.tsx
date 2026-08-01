@@ -111,13 +111,17 @@ const Calendar = () => {
           const data = await response.json();
 
           saveWorkoutSessions(data);
+        } else {
+          throw new Error();
         }
       } catch (error) {
-        console.error("Failed to load workout sessions", error);
-        showToast(
-          "errorToast",
-          "Failed to load workout sessions. Check your Internet connection",
-        );
+        if (error instanceof Error) {
+          console.error("Failed to load workout sessions", error);
+          showToast(
+            "errorToast",
+            "Failed to load workout sessions. Check your Internet connection",
+          );
+        }
       }
     };
 

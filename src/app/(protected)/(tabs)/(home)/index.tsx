@@ -62,61 +62,61 @@ const HomeScreen = () => {
       });
   }, [workoutSessions]);
 
-  // React.useEffect(() => {
-  //   const fetchUserData = async () => {
-  //     if (!user || userData) return;
+  React.useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user || userData) return;
 
-  //     try {
-  //       console.log("Fetching user data");
-  //       const response = await fetchWithAuth(`${BASE_URL}/api/database/user`, {
-  //         method: "GET",
-  //       });
+      try {
+        console.log("Fetching user data");
+        const response = await fetchWithAuth(`${BASE_URL}/api/database/user`, {
+          method: "GET",
+        });
 
-  //       if (response.ok) {
-  //         const data = await response.json();
-  //         updateUserData(data);
-  //       } else {
-  //         throw new Error();
-  //       }
-  //     } catch (error) {
-  //       if (error instanceof Error) {
-  //         console.error("Failed to load user data", error);
-  //         showToast(
-  //           "errorToast",
-  //           "Failed to load user data. Check your Internet connection",
-  //         );
-  //       }
-  //     }
-  //   };
-  //   fetchUserData();
-  // }, [fetchWithAuth, user]);
+        if (response.ok) {
+          const data = await response.json();
+          updateUserData(data);
+        } else {
+          throw new Error();
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error("Failed to load user data", error);
+          showToast(
+            "errorToast",
+            "Failed to load user data. Check your Internet connection",
+          );
+        }
+      }
+    };
+    fetchUserData();
+  }, [fetchWithAuth, user]);
 
-  // React.useEffect(() => {
-  //   const loadSessions = async () => {
-  //     if (!user || workoutSessions.length > 0) return;
+  React.useEffect(() => {
+    const loadSessions = async () => {
+      if (!user || workoutSessions.length > 0) return;
 
-  //     try {
-  //       console.log("Fetching workout sessions");
+      try {
+        console.log("Fetching workout sessions");
 
-  //       const response = await fetchWithAuth(
-  //         `${BASE_URL}/api/database/workout-sessions`,
-  //         { method: "GET" },
-  //       );
-  //       if (response.ok) {
-  //         const data = await response.json();
-  //         saveWorkoutSessions(data);
-  //       }
-  //     } catch (error) {
-  //       console.error("Failed to load workout sessions", error);
-  //       showToast(
-  //         "errorToast",
-  //         "Failed to load workout sessions. Check your Internet connection",
-  //       );
-  //     }
-  //   };
+        const response = await fetchWithAuth(
+          `${BASE_URL}/api/database/workout-sessions`,
+          { method: "GET" },
+        );
+        if (response.ok) {
+          const data = await response.json();
+          saveWorkoutSessions(data);
+        }
+      } catch (error) {
+        console.error("Failed to load workout sessions", error);
+        showToast(
+          "errorToast",
+          "Failed to load workout sessions. Check your Internet connection",
+        );
+      }
+    };
 
-  //   loadSessions();
-  // }, [fetchWithAuth, user]);
+    loadSessions();
+  }, [fetchWithAuth, user]);
 
   const handleDeleteWorkoutSession = async (_id: string) => {
     try {

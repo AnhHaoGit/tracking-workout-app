@@ -1,17 +1,17 @@
+import LineChartComponent from "@/components/LineChartComponent";
+import { BASE_URL } from "@/constants/constants";
+import { StatisticsDataPoint } from "@/constants/type";
+import showToast from "@/utils/toast";
+import { useRouter } from "expo-router";
+import React from "react";
 import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
   Text,
   View,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
 } from "react-native";
-import React from "react";
-import { StatisticsDataPoint } from "@/constants/type";
-import LineChartComponent from "@/components/LineChartComponent";
 import { useAuth } from "../../../../context/auth";
-import { useRouter } from "expo-router";
-import { BASE_URL } from "@/constants/constants";
-import showToast from "@/utils/toast";
 
 const suggestedNames = [
   "Pull Day",
@@ -53,8 +53,10 @@ const Duration = () => {
   }, [isLoading, user, router]);
 
   React.useEffect(() => {
+    let isCancelled = false;
+
     const fetchDurationData = async () => {
-      if (!user) return;
+      if (!user || isCancelled) return;
 
       const cached = durationCache.current.get(selectedName);
       const hasCached = cached !== undefined;
@@ -71,26 +73,35 @@ const Duration = () => {
           { method: "GET" },
         );
 
+        if (isCancelled) return;
+
         if (response.ok) {
           const data = await response.json();
+          if (isCancelled) return;
           durationCache.current.set(selectedName, data);
           setDurationData(data);
         } else {
           throw new Error();
         }
       } catch (error) {
-        if (error instanceof Error && !hasCached) {
+        if (!isCancelled && error instanceof Error && !hasCached) {
           showToast(
             "errorToast",
             "Cannot load duration statistics. Check your internet connection.",
           );
         }
       } finally {
-        setIsFetchingDuration(false);
+        if (!isCancelled) {
+          setIsFetchingDuration(false);
+        }
       }
     };
 
     fetchDurationData();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [fetchWithAuth, user, selectedName]);
 
   return (

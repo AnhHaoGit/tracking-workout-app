@@ -1,17 +1,17 @@
+import LineChartComponent from "@/components/LineChartComponent";
+import { BASE_URL } from "@/constants/constants";
+import { StatisticsDataPoint } from "@/constants/type";
+import showToast from "@/utils/toast";
+import { useRouter } from "expo-router";
+import React from "react";
 import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
   Text,
   View,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
 } from "react-native";
-import React from "react";
-import { StatisticsDataPoint } from "@/constants/type";
-import LineChartComponent from "@/components/LineChartComponent";
 import { useAuth } from "../../../../context/auth";
-import { useRouter } from "expo-router";
-import { BASE_URL } from "@/constants/constants";
-import showToast from "@/utils/toast";
 
 const suggestedNames = [
   "Pull Day",
@@ -39,7 +39,6 @@ const Volume = () => {
   const { user, isLoading, fetchWithAuth } = useAuth();
   const router = useRouter();
 
-  // cache dữ liệu theo tên bài tập
   const volumeCache = React.useRef<Map<string, StatisticsDataPoint[]>>(
     new Map(),
   );
@@ -51,8 +50,10 @@ const Volume = () => {
   }, [isLoading, user, router]);
 
   React.useEffect(() => {
+    let isCancelled = false;
+
     const fetchVolumeData = async () => {
-      if (!user) return;
+      if (!user || isCancelled) return;
 
       const cached = volumeCache.current.get(selectedName);
       const hasCached = cached !== undefined;
@@ -69,26 +70,35 @@ const Volume = () => {
           { method: "GET" },
         );
 
+        if (isCancelled) return;
+
         if (response.ok) {
           const data = await response.json();
+          if (isCancelled) return;
           volumeCache.current.set(selectedName, data);
           setVolumeData(data);
         } else {
           throw new Error();
         }
       } catch (error) {
-        if (error instanceof Error && !hasCached) {
+        if (!isCancelled && error instanceof Error && !hasCached) {
           showToast(
             "errorToast",
             "Cannot load volume statistics. Check your internet connection.",
           );
         }
       } finally {
-        setIsFetchingVolume(false);
+        if (!isCancelled) {
+          setIsFetchingVolume(false);
+        }
       }
     };
 
     fetchVolumeData();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [fetchWithAuth, user, selectedName]);
 
   return (
@@ -102,7 +112,7 @@ const Volume = () => {
           Volume (kgs)
         </Text>
         <Text className="font-sans-regular text-sm text-text-secondary mb-3">
-          How long your sessions last
+          Total weight lifted over time
         </Text>
 
         <ScrollView

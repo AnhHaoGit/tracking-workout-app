@@ -1,6 +1,6 @@
 import { connectToDatabase } from "@/utils/connect-db";
-import { withAuth } from "@/utils/middleware";
 import formatDate from "@/utils/format-date";
+import { withAuth } from "@/utils/middleware";
 
 const estimateOneRepMax = (weight: number, reps: number) => {
   return Math.round(weight * (1 + reps / 30) * 100) / 100;
@@ -55,13 +55,21 @@ export const GET = withAuth(async (req, user) => {
       return Response.json([]);
     }
 
-
-    const maxSetsCount = Math.max(...sessions.map((s) => s.sets.length));
+    const maxSetsCount = sessions.reduce((max, session) => {
+      const sets = Array.isArray(session.sets) ? session.sets : [];
+      return Math.max(max, sets.length);
+    }, 0);
 
     const data = Array.from({ length: maxSetsCount }, (_, setIndex) =>
       sessions.map((session) => {
-        const set = session.sets[setIndex];
-        const hasData = set && set.weight !== null && set.reps !== null;
+        const sets = Array.isArray(session.sets) ? session.sets : [];
+        const set = sets[setIndex];
+        const hasData =
+          set !== undefined &&
+          typeof set.weight === "number" &&
+          Number.isFinite(set.weight) &&
+          typeof set.reps === "number" &&
+          Number.isFinite(set.reps);
 
         return {
           label: formatDate(session.date),

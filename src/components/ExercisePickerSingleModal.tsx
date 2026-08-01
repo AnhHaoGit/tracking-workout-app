@@ -39,6 +39,7 @@ const ExercisePickerSingleModal = ({
       setExerciseSearch("");
       setSelectedTarget("All");
       setSelectedEquipment("All");
+      setChosenExercise(null);
     }
   }, [visible]);
 
@@ -84,7 +85,8 @@ const ExercisePickerSingleModal = ({
   );
 
   const handleConfirm = () => {
-    if (chosenExercise && onSelectExercise) onSelectExercise(chosenExercise);
+    if (!chosenExercise) return;
+    onSelectExercise(chosenExercise);
   };
 
   return (
@@ -222,7 +224,10 @@ const ExercisePickerSingleModal = ({
 
           <Pressable
             onPress={handleConfirm}
-            className="mt-4 rounded-full bg-accent-2 px-4 py-3"
+            disabled={!chosenExercise}
+            className={`mt-4 rounded-full px-4 py-3 ${
+              chosenExercise ? "bg-accent-2" : "bg-primary opacity-50"
+            }`}
           >
             <Text className="text-center font-sans-semibold text-base text-background">
               Select exercise

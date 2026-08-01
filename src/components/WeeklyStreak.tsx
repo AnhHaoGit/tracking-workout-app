@@ -1,7 +1,7 @@
-import { View, Text } from "react-native";
-import React from "react";
 import { WorkoutSession } from "@/constants/type";
 import { SymbolView } from "expo-symbols";
+import React from "react";
+import { Text, View } from "react-native";
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -9,16 +9,16 @@ type DayStatus = "completed" | "planned" | "empty";
 
 const toMondayFirstIndex = (jsDay: number) => (jsDay + 6) % 7;
 
-const isSameUTCDate = (a: Date, b: Date) =>
-  a.getUTCFullYear() === b.getUTCFullYear() &&
-  a.getUTCMonth() === b.getUTCMonth() &&
-  a.getUTCDate() === b.getUTCDate();
+const isSameLocalDate = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
 
 const getStartOfWeek = (date: Date) => {
-  const mondayIndex = toMondayFirstIndex(date.getUTCDay());
+  const mondayIndex = toMondayFirstIndex(date.getDay());
   const start = new Date(date);
-  start.setUTCDate(date.getUTCDate() - mondayIndex);
-  start.setUTCHours(0, 0, 0, 0);
+  start.setDate(date.getDate() - mondayIndex);
+  start.setHours(0, 0, 0, 0);
   return start;
 };
 
@@ -33,10 +33,10 @@ const WeeklyStreak = ({
 
     return Array.from({ length: 7 }, (_, offset) => {
       const date = new Date(startOfWeek);
-      date.setUTCDate(startOfWeek.getUTCDate() + offset);
+      date.setDate(startOfWeek.getDate() + offset);
 
       const sessionsOnDay = workoutSessions.filter((session) =>
-        isSameUTCDate(new Date(session.date), date),
+        isSameLocalDate(new Date(session.date), date),
       );
 
       let status: DayStatus = "empty";
@@ -50,7 +50,7 @@ const WeeklyStreak = ({
         label: DAY_LABELS[offset],
         date,
         status,
-        isToday: isSameUTCDate(date, today),
+        isToday: isSameLocalDate(date, today),
       };
     });
   }, [workoutSessions]);
@@ -62,7 +62,7 @@ const WeeklyStreak = ({
 
     const hasCompletedInWeek = (weekStart: Date) => {
       const weekEnd = new Date(weekStart);
-      weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
+      weekEnd.setDate(weekStart.getDate() + 7);
 
       return completedDates.some((d) => d >= weekStart && d < weekEnd);
     };
@@ -71,7 +71,7 @@ const WeeklyStreak = ({
     let cursor = getStartOfWeek(today);
 
     if (!hasCompletedInWeek(cursor)) {
-      cursor.setUTCDate(cursor.getUTCDate() - 7);
+      cursor.setDate(cursor.getDate() - 7);
     }
 
     let streak = 0;
@@ -80,11 +80,12 @@ const WeeklyStreak = ({
     for (let i = 0; i < MAX_WEEKS_LOOKBACK; i++) {
       if (!hasCompletedInWeek(cursor)) break;
       streak += 1;
-      cursor.setUTCDate(cursor.getUTCDate() - 7);
+      cursor.setDate(cursor.getDate() - 7);
     }
 
     return streak;
   }, [workoutSessions]);
+
   return (
     <View className="mb-6 flex-row items-center gap-4 rounded-3xl border-2 border-primary bg-background/80 p-4">
       <View
