@@ -20,6 +20,7 @@ export type WorkoutSession = {
   createdAt: Date;
   status: string;
   startedAt: Date;
+  finishedAt: Date;
 };
 
 export type WorkoutSessionCache = {

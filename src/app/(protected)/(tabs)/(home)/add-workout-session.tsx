@@ -45,7 +45,9 @@ const AddWorkoutSession = () => {
 
   const [isSaving, setIsSaving] = React.useState(false);
   const [date, setDate] = React.useState(new Date());
-  const [time, setTime] = React.useState(new Date());
+  const [time, setTime] = React.useState(
+    new Date("2026-08-05T00:00:00.000+00:00"),
+  );
   const { addWorkoutSession } = useWorkoutSessions();
 
   React.useLayoutEffect(() => {
@@ -147,6 +149,11 @@ const AddWorkoutSession = () => {
         const finalSession = await res.json();
 
         addWorkoutSession(finalSession);
+
+        showToast(
+          "successToast",
+          "Workout session created successfully.",
+        );
 
         router.replace("/(protected)/(tabs)/(home)");
       }

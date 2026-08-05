@@ -67,7 +67,6 @@ const HomeScreen = () => {
       if (!user || userData) return;
 
       try {
-        console.log("Fetching user data");
         const response = await fetchWithAuth(`${BASE_URL}/api/database/user`, {
           method: "GET",
         });
@@ -96,8 +95,6 @@ const HomeScreen = () => {
       if (!user || workoutSessions.length > 0) return;
 
       try {
-        console.log("Fetching workout sessions");
-
         const response = await fetchWithAuth(
           `${BASE_URL}/api/database/workout-sessions`,
           { method: "GET" },

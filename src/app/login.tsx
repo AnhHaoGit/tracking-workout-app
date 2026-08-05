@@ -7,15 +7,14 @@ import {
   Text,
   View,
   Pressable,
-  StyleSheet,
 } from "react-native";
 import { useAuth } from "../context/auth";
 
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
+import GoogleIcon from "../components/GoogleIcon";
 
 const SafeAreaView = styled(RNSafeAreaView);
-const { width } = Dimensions.get("window");
-const MARGIN = 0.9;
+
 
 const SignIn = () => {
   const { signIn } = useAuth();
@@ -36,14 +35,10 @@ const SignIn = () => {
           showsVerticalScrollIndicator={false}
           className="w-full"
         >
-          <View
-            style={{ width: width * MARGIN }}
-            className="border-primary flex border-2 w-full mt-20 px-5 py-8 rounded-4xl"
-          >
-            <Pressable style={styles.googleButton} onPress={signIn}>
-              <Text style={styles.googleButtonText}>Sign in with Google</Text>
-            </Pressable>
-          </View>
+          <Pressable className='bg-white px-8 py-4 mt-15 rounded-2xl flex flex-row items-center justify-center gap-4' onPress={signIn}>
+            <GoogleIcon />
+            <Text className="text-black font-sans-semibold text-xl">Sign in with Google</Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -51,40 +46,3 @@ const SignIn = () => {
 };
 
 export default SignIn;
-
-const styles = StyleSheet.create({
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-
-  button: {
-    backgroundColor: "#ffffff",
-    paddingVertical: 12,
-    borderRadius: 100,
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-
-  buttonContainer: {
-    gap: 16,
-    marginTop: 40,
-  },
-  googleButton: {
-    backgroundColor: "#4285F4",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  googleButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});

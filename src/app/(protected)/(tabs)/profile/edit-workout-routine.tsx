@@ -52,6 +52,7 @@ const EditWorkoutRoutine = () => {
 
   const handleChangeRoutine = async (routine: string) => {
     const previous = { isOnTheGoChecked, isWeeklyFixedChecked };
+    console.log(BASE_URL + "/api/database/routine");
     try {
       const response = await fetchWithAuth(`${BASE_URL}/api/database/routine`, {
         method: "POST",

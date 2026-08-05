@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "TrackingWorkoutApp",
-    "slug": "TrackingWorkoutApp",
+    "name": "Peak",
+    "slug": "Peak",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "trackingworkoutapp",
+    "icon": "./assets/images/peak-icon.png",
+    "scheme": "peak",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/icon.png",
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anhhaonguyen.trackingworkoutapp"
+      "icon": "./assets/images/peak-icon.png",
+      "supportsTablet": false,
+      "bundleIdentifier": "com.anhhaonguyen.peak"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,12 +19,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "package": "com.anhhaonguyen.trackingworkoutapp",
+      "package": "com.anhhaonguyen.peak",
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "server",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/peak-icon.png"
     },
     "plugins": [
       "expo-router",
@@ -33,7 +33,7 @@
         {
           "backgroundColor": "#208AEF",
           "android": {
-            "image": "./assets/images/splash-icon.png",
+            "image": "./assets/images/peak-icon.png",
             "imageWidth": 76
           }
         }
