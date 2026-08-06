@@ -10,9 +10,9 @@ const showToast = (type: string, text2: string) => {
           ? "Info"
           : "Error",
     text2,
-    bottomOffset: 110,
+    topOffset: 60,
     visibilityTime: 2000,
-    position: "bottom",
+    position: 'top',
   });
 };
 export default showToast;

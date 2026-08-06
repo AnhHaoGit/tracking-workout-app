@@ -9,6 +9,8 @@ import { WorkoutSessionsProvider } from "@/context/workout-sessions";
 import Toast from "react-native-toast-message";
 import { ToastConfigParams } from "react-native-toast-message";
 import { SymbolView } from "expo-symbols";
+import { NetworkProvider } from "@/context/network";
+
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -118,12 +120,14 @@ export default function RootLayout() {
       <AuthProvider>
         <UserProvider>
           <WorkoutSessionsProvider>
-            <StatusBar barStyle="light-content" backgroundColor="#000000" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-              }}
-            />
+            <NetworkProvider>
+              <StatusBar barStyle="light-content" backgroundColor="#000000" />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                }}
+              />
+            </NetworkProvider>
           </WorkoutSessionsProvider>
         </UserProvider>
       </AuthProvider>

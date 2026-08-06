@@ -73,6 +73,29 @@ const getFireColor = (sessionsOnDay: WorkoutSession[]) => {
   return allCompleted ? FIRE_COLOR_COMPLETED : FIRE_COLOR_PENDING;
 };
 
+const formatDuration = (
+  startedAt?: string | Date,
+  finishedAt?: string | Date,
+) => {
+  if (!startedAt || !finishedAt) return null;
+
+  const totalSeconds = Math.max(
+    0,
+    Math.floor(
+      (new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000,
+    ),
+  );
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+
+  return hours > 0
+    ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+    : `${pad(minutes)}:${pad(seconds)}`;
+};
+
 const isPickedClasses = "p-2 bg-white rounded-full";
 const isNotPickedClasses = "p-2 border-2 border-primary rounded-full";
 
@@ -86,7 +109,9 @@ const Calendar = () => {
     useWorkoutSessions();
   const [isDisplayingListView, setIsDisplayingListView] =
     React.useState<boolean>(false);
-
+  const [listFilter, setListFilter] = React.useState<
+    "all" | "completed" | "remaining"
+  >("all");
   // số tháng đang được render trong calendar view
   const [visibleMonthsCount, setVisibleMonthsCount] = React.useState(1);
 
@@ -220,6 +245,18 @@ const Calendar = () => {
   const visibleMonths = months.slice(0, visibleMonthsCount);
   const isStillRenderingMonths = visibleMonthsCount < months.length;
 
+  const filteredAndSortedSessions = React.useMemo(() => {
+    const filtered = workoutSessions.filter((session) => {
+      if (listFilter === "completed") return session.status === "Completed";
+      if (listFilter === "remaining") return session.status !== "Completed";
+      return true; // "all"
+    });
+
+    return [...filtered].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+  }, [workoutSessions, listFilter]);
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
@@ -257,65 +294,105 @@ const Calendar = () => {
             </Pressable>
           </View>
         </View>
+        {isDisplayingListView && (
+          <View className="flex flex-row gap-2 mt-4">
+            {(
+              [
+                { key: "remaining", label: "Not completed" },
+                { key: "completed", label: "Completed" },
+                { key: "all", label: "All" },
+              ] as const
+            ).map((tab) => (
+              <Pressable
+                key={tab.key}
+                onPress={() => setListFilter(tab.key)}
+                className={`px-4 py-2 rounded-full ${
+                  listFilter === tab.key
+                    ? "bg-white border-2 border-white"
+                    : "border-2 border-primary"
+                }`}
+              >
+                <Text
+                  className={`font-sans-semibold text-sm ${
+                    listFilter === tab.key ? "text-black" : "text-text-primary"
+                  }`}
+                >
+                  {tab.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         {isDisplayingListView ? (
           <View className="mt-6">
-            {workoutSessions.length === 0 ? (
+            {filteredAndSortedSessions.length === 0 ? (
               <View className="rounded-3xl border border-primary bg-background/70 p-4">
                 <Text className="font-sans-regular text-text-secondary">
-                  No workouts scheduled. Create one with the plus button in the
-                  home page.
+                  {listFilter === "completed"
+                    ? "No completed workouts yet."
+                    : listFilter === "remaining"
+                      ? "No remaining workouts. Nice work!"
+                      : "No workouts scheduled. Create one with the plus button in the home page."}
                 </Text>
               </View>
             ) : (
-              workoutSessions.map((session) => (
-                <Link
-                  href={{
-                    pathname: "/(protected)/[workoutSessionId]",
-                    params: {
-                      workoutSessionId: session._id,
-                    },
-                  }}
-                  asChild
-                  key={session._id}
-                  className="flex flex-row items-center justify-between mb-3 rounded-3xl border-2 border-primary bg-background/80 p-4"
-                >
-                  <Pressable>
-                    <View>
-                      <Text className="font-sans-bold text-xl text-text-primary">
-                        {session.name}
-                      </Text>
-                      <Text className="mt-1 font-sans-regular text-sm text-text-secondary">
-                        {new Date(session.date).toLocaleDateString()} •{" "}
-                        {new Date(session.time).toLocaleTimeString()}
-                      </Text>
-                      <View className="mt-2 flex-row items-center justify-between gap-3">
-                        <Text className="font-sans-medium text-sm text-text-secondary">
-                          {session.exercises.length} exercise
-                          {session.exercises.length === 1 ? "" : "s"}
+              filteredAndSortedSessions.map((session) => {
+                const duration =
+                  session.status === "Completed"
+                    ? formatDuration(session.startedAt, session.finishedAt)
+                    : null;
+
+                return (
+                  <Link
+                    href={{
+                      pathname: "/(protected)/[workoutSessionId]",
+                      params: {
+                        workoutSessionId: session._id,
+                      },
+                    }}
+                    asChild
+                    key={session._id}
+                    className="flex flex-row items-center justify-between mb-3 rounded-3xl border-2 border-primary bg-background/80 p-4"
+                  >
+                    <Pressable>
+                      <View>
+                        <Text className="font-sans-bold text-xl text-text-primary">
+                          {session.name}
                         </Text>
-                        <View className="rounded-full border border-primary bg-primary/10 px-3 py-1 flex items-center justify-center">
-                          <Text
-                            className={`font-sans-medium text-xs ${session.status === "Not started yet" && "text-accent-1"} ${session.status === "In progress" && "text-accent-2"} ${session.status === "Completed" && "text-accent-3"}`}
-                          >
-                            {session.status ?? "Not started yet"}
+                        <Text className="mt-1 font-sans-regular text-sm text-text-secondary">
+                          {new Date(session.date).toLocaleDateString()} •{" "}
+                          {new Date(session.time).toLocaleTimeString()}
+                        </Text>
+                        <View className="mt-2 flex-row items-center justify-between gap-3">
+                          <Text className="font-sans-medium text-sm text-text-secondary">
+                            {session.exercises.length} exercise
+                            {session.exercises.length === 1 ? "" : "s"}
+                            {duration ? `  •  ${duration}` : ""}
                           </Text>
+                          <View className="rounded-full border border-primary bg-primary/10 px-3 py-1 flex items-center justify-center">
+                            <Text
+                              className={`font-sans-medium text-xs ${session.status === "Not started yet" && "text-accent-1"} ${session.status === "In progress" && "text-accent-2"} ${session.status === "Completed" && "text-accent-3"}`}
+                            >
+                              {session.status ?? "Not started yet"}
+                            </Text>
+                          </View>
                         </View>
                       </View>
-                    </View>
-                    <Pressable
-                      onPress={() => handleDeleteWorkoutSession(session._id)}
-                      className="rounded-full border border-white flex items-center justify-center mr-2 p-1"
-                    >
-                      <SymbolView
-                        name="multiply"
-                        tintColor="#ffffff"
-                        size={10}
-                      />
+                      <Pressable
+                        onPress={() => handleDeleteWorkoutSession(session._id)}
+                        className="rounded-full border border-white flex items-center justify-center mr-2 p-1"
+                      >
+                        <SymbolView
+                          name="multiply"
+                          tintColor="#ffffff"
+                          size={10}
+                        />
+                      </Pressable>
                     </Pressable>
-                  </Pressable>
-                </Link>
-              ))
+                  </Link>
+                );
+              })
             )}
           </View>
         ) : (

@@ -20,6 +20,18 @@ import SelectDropdown from "react-native-select-dropdown";
 import showToast from "@/utils/toast";
 import ExercisesPickerModal from "@/components/ExercisesPickerModal";
 
+const formatDuration = (totalSeconds: number) => {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const pad = (n: number) => n.toString().padStart(2, "0");
+
+  return hours > 0
+    ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+    : `${pad(minutes)}:${pad(seconds)}`;
+};
+
 const TECHNIQUES = ["None", "Warm-up", "Failure"];
 const ExerciseDetailScreen = () => {
   const params = useLocalSearchParams<{ workoutSessionId?: string }>();
@@ -33,6 +45,10 @@ const ExerciseDetailScreen = () => {
   const [isFetching, setIsFetching] = React.useState(false);
   const [isExerciseModalVisible, setExerciseModalVisible] =
     React.useState<boolean>(false);
+  const [draftValues, setDraftValues] = React.useState<Record<string, string>>(
+    {},
+  );
+  const [elapsedSeconds, setElapsedSeconds] = React.useState(0);
 
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
@@ -74,6 +90,28 @@ const ExerciseDetailScreen = () => {
 
     loadSession();
   }, [fetchWithAuth, user, params.workoutSessionId, router]);
+
+  React.useEffect(() => {
+    if (
+      selectedWorkoutSession?.status !== "In progress" ||
+      !selectedWorkoutSession.startedAt
+    ) {
+      return;
+    }
+
+    const startedAtMs = new Date(selectedWorkoutSession.startedAt).getTime();
+
+    const updateElapsed = () => {
+      setElapsedSeconds(
+        Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000)),
+      );
+    };
+
+    updateElapsed(); // set ngay lần đầu, không đợi 1s
+    const interval = setInterval(updateElapsed, 1000);
+
+    return () => clearInterval(interval);
+  }, [selectedWorkoutSession?.status, selectedWorkoutSession?.startedAt]);
 
   const handleChangeWorkoutSessionStatus = async (status: string) => {
     try {
@@ -120,26 +158,56 @@ const ExerciseDetailScreen = () => {
     }
   };
 
+  const getDraftKey = (setId: number, field: "weight" | "reps") =>
+    `${exerciseIndex}-${setId}-${field}`;
+
+  const getDisplayValue = (
+    setId: number,
+    field: "weight" | "reps",
+    actualValue: string | null,
+  ) => {
+    const key = getDraftKey(setId, field);
+    return draftValues[key] !== undefined
+      ? draftValues[key]
+      : (actualValue?.toString() ?? "");
+  };
+
   const handleSetValueChange = (
     setId: number,
     field: "weight" | "reps",
-    value: string,
+    rawValue: string,
   ) => {
-    setSelectedWorkoutSession((prev) => {
-      if (!prev) return prev;
-      const updatedExercises = prev.exercises.map((exercise, idx) => {
-        if (idx !== exerciseIndex) return exercise;
-        return {
-          ...exercise,
-          sets: exercise.sets.map((set) =>
-            set.id === setId
-              ? { ...set, [field]: value === "" ? null : Number(value) }
-              : set,
-          ),
-        };
+    let normalized = rawValue.replace(",", ".");
+
+    // Reps là số nguyên -> không cho dấu chấm
+    const pattern = field === "reps" ? /^\d*$/ : /^\d*\.?\d*$/;
+    if (!pattern.test(normalized)) return; // ký tự không hợp lệ -> bỏ qua
+
+    const key = getDraftKey(setId, field);
+    setDraftValues((prev) => ({ ...prev, [key]: normalized }));
+
+    // Chỉ ghi vào state chính khi chuỗi đã là số hợp lệ hoàn chỉnh
+    // (bỏ qua các trạng thái đang gõ dở như "", ".", "12.")
+    const isIntermediate = normalized === "" || normalized.endsWith(".");
+
+    // chuỗi rỗng thì là null, còn lại thì parse thành number
+    const numValue = normalized === "" ? null : Number(normalized);
+
+    if (normalized === "" || (!isIntermediate && !isNaN(numValue as number))) {
+      setSelectedWorkoutSession((prev) => {
+        if (!prev) return prev;
+        const updatedExercises = prev.exercises.map((exercise, idx) => {
+          if (idx !== exerciseIndex) return exercise;
+          return {
+            ...exercise,
+            sets: exercise.sets.map((set) =>
+              set.id === setId ? { ...set, [field]: numValue } : set,
+            ),
+          };
+        });
+        return { ...prev, exercises: updatedExercises };
       });
-      return { ...prev, exercises: updatedExercises };
-    });
+    }
   };
 
   const handleAddSet = () => {
@@ -155,6 +223,27 @@ const ExerciseDetailScreen = () => {
         };
       });
       return { ...prev, exercises: updatedExercises };
+    });
+  };
+
+  const handleDeleteSet = (setId: number) => {
+    setSelectedWorkoutSession((prev) => {
+      if (!prev) return prev;
+      const updatedExercises = prev.exercises.map((exercise, idx) => {
+        if (idx !== exerciseIndex) return exercise;
+        return {
+          ...exercise,
+          sets: exercise.sets.filter((set) => set.id !== setId),
+        };
+      });
+      return { ...prev, exercises: updatedExercises };
+    });
+
+    setDraftValues((prev) => {
+      const updated = { ...prev };
+      delete updated[getDraftKey(setId, "weight")];
+      delete updated[getDraftKey(setId, "reps")];
+      return updated;
     });
   };
 
@@ -181,6 +270,18 @@ const ExerciseDetailScreen = () => {
   };
 
   const handleSaveWorkoutSession = async () => {
+    const hasIncompleteDecimal = Object.values(draftValues).some(
+      (value) => value !== "" && value.endsWith("."),
+    );
+
+    if (hasIncompleteDecimal) {
+      showToast(
+        "infoToast",
+        "Please complete the decimal number before saving.",
+      );
+      return;
+    }
+
     try {
       const res = await fetchWithAuth(
         `${BASE_URL}/api/database/workout-session`,
@@ -217,7 +318,7 @@ const ExerciseDetailScreen = () => {
     }
   };
 
-  const handleDeleteExercise = async (exerciseId: number) => {
+  const handleDeleteExercise = async (index: number) => {
     try {
       const res = await fetchWithAuth(
         `${BASE_URL}/api/database/workout-session-exercise`,
@@ -228,7 +329,7 @@ const ExerciseDetailScreen = () => {
           },
           body: JSON.stringify({
             _id: params.workoutSessionId,
-            exerciseId,
+            exerciseIndex: index,
           }),
         },
       );
@@ -240,9 +341,9 @@ const ExerciseDetailScreen = () => {
 
           if (
             selectedWorkoutSession?.exercises.length &&
-            exerciseIndex === selectedWorkoutSession.exercises.length - 1
+            index === selectedWorkoutSession.exercises.length - 1
           ) {
-            setExeriseIndex(exerciseIndex - 1);
+            setExeriseIndex((prev) => Math.max(prev - 1, 0));
           }
           setSelectedWorkoutSession(response.session);
         }
@@ -283,10 +384,7 @@ const ExerciseDetailScreen = () => {
         img: exercise.img,
       }));
 
-      if (chosen.length === 0) {
-        setExerciseModalVisible(false);
-        return;
-      }
+      setExerciseModalVisible(false);
 
       try {
         const res = await fetchWithAuth(
@@ -307,7 +405,6 @@ const ExerciseDetailScreen = () => {
             setSelectedWorkoutSession(response.session);
             updateWorkoutSessions(params.workoutSessionId, response.session);
           }
-          setExerciseModalVisible(false);
         } else {
           throw new Error();
         }
@@ -328,6 +425,20 @@ const ExerciseDetailScreen = () => {
     ],
   );
 
+  const completedDurationSeconds =
+    selectedWorkoutSession?.status === "Completed" &&
+    selectedWorkoutSession.startedAt &&
+    selectedWorkoutSession.finishedAt
+      ? Math.max(
+          0,
+          Math.floor(
+            (new Date(selectedWorkoutSession.finishedAt).getTime() -
+              new Date(selectedWorkoutSession.startedAt).getTime()) /
+              1000,
+          ),
+        )
+      : null;
+
   if (isFetching) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
@@ -338,7 +449,7 @@ const ExerciseDetailScreen = () => {
 
   if (!selectedWorkoutSession) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
+      <View className="flex-1 items-center justify-center bg-background px-4 py-4">
         <Text className="font-sans-regular text-xl text-text-primary">
           Cannot load the selected workout session. Check your internet
           connection.
@@ -354,14 +465,22 @@ const ExerciseDetailScreen = () => {
     >
       <View
         key={selectedWorkoutSession._id}
-        className="flex flex-row items-center justify-between mb-3 rounded-3xl border-2 border-primary bg-background/80 p-4"
+        className="flex flex-row items-center justify-between mb-4 rounded-3xl border-2 border-primary bg-background/80 p-5"
       >
-        <View>
-          <View className="flex flex-row gap-2">
+        <View className="flex-1 pr-3">
+          <View className="flex flex-row items-center gap-2 flex-wrap">
             <Text className="font-sans-bold text-2xl text-text-primary">
               {selectedWorkoutSession.name}
             </Text>
-            <View className="rounded-full border border-primary bg-primary/10 px-3 py-1 flex items-center justify-center">
+            <View
+              className={`rounded-full border px-3 py-1 flex items-center justify-center ${
+                selectedWorkoutSession.status === "Not started yet"
+                  ? "border-accent-1 bg-accent-1/10"
+                  : selectedWorkoutSession.status === "In progress"
+                    ? "border-accent-2 bg-accent-2/10"
+                    : "border-accent-3 bg-accent-3/10"
+              }`}
+            >
               <Text
                 className={`font-sans-medium text-xs ${selectedWorkoutSession.status === "Not started yet" && "text-accent-1"} ${selectedWorkoutSession.status === "In progress" && "text-accent-2"} ${selectedWorkoutSession.status === "Completed" && "text-accent-3"}`}
               >
@@ -370,25 +489,55 @@ const ExerciseDetailScreen = () => {
             </View>
           </View>
 
-          <Text className="mt-1 font-sans-regular text-sm text-text-secondary">
-            {new Date(selectedWorkoutSession.date).toLocaleDateString()} •{" "}
-            {new Date(selectedWorkoutSession.time).toLocaleTimeString()}
-          </Text>
+          <View className="flex gap-1 mt-2">
+            <View className="flex flex-row items-center gap-1">
+              <SymbolView name="calendar" tintColor="#717171" size={12} />
+
+              <Text className="mt-1 font-sans-regular text-sm text-text-secondary">
+                {new Date(selectedWorkoutSession.date).toLocaleDateString()} •{" "}
+                {new Date(selectedWorkoutSession.time).toLocaleTimeString()}
+              </Text>
+            </View>
+
+            {selectedWorkoutSession.status === "In progress" && (
+              <View className="flex flex-row items-center gap-1">
+                <SymbolView name="stopwatch" tintColor="#717171" size={12} />
+                <Text className="font-sans-regular text-sm text-text-secondary">
+                  {formatDuration(elapsedSeconds)}
+                </Text>
+              </View>
+            )}
+
+            {selectedWorkoutSession.status === "Completed" &&
+              completedDurationSeconds !== null && (
+                <View className="flex flex-row items-center gap-1">
+                  <SymbolView
+                    name="checkmark.circle"
+                    tintColor="#717171"
+                    size={12}
+                  />
+                  <Text className="font-sans-regular text-sm text-text-secondary">
+                    Duration: {formatDuration(completedDurationSeconds)}
+                  </Text>
+                </View>
+              )}
+          </View>
         </View>
+
         {selectedWorkoutSession.status === "Not started yet" && (
           <Pressable
             onPress={() => handleChangeWorkoutSessionStatus("In progress")}
-            className="bg-white px-4 py-2 rounded-full"
+            className="bg-white px-5 py-3 rounded-full active:opacity-70"
           >
-            <Text className="font-sans-semibold text-xl">Start</Text>
+            <Text className="font-sans-semibold text-lg">Start</Text>
           </Pressable>
         )}
         {selectedWorkoutSession.status === "In progress" && (
           <Pressable
-            className="bg-white px-4 py-2 rounded-full"
+            className="bg-white px-5 py-3 rounded-full active:opacity-70"
             onPress={() => handleChangeWorkoutSessionStatus("Completed")}
           >
-            <Text className="font-sans-semibold text-xl">Finish</Text>
+            <Text className="font-sans-semibold text-lg">Finish</Text>
           </Pressable>
         )}
       </View>
@@ -400,12 +549,17 @@ const ExerciseDetailScreen = () => {
               All exercises ({selectedWorkoutSession.exercises.length})
             </Text>
             <View className="mt-2">
-              {selectedWorkoutSession.exercises.map((exercise) => (
+              {selectedWorkoutSession.exercises.map((exercise, index) => (
                 <View
-                  key={exercise.id}
+                  key={index}
                   className="flex flex-row items-center justify-between mb-3 rounded-3xl border-2 border-primary bg-background/80 p-4"
                 >
-                  <View className="flex-1 flex-row items-start gap-3">
+                  <View className="flex-1 flex-row items-center gap-3">
+                    <View className="w-8 h-8 rounded-full bg-primary/20 items-center justify-center">
+                      <Text className="font-sans-semibold text-text-primary text-sm">
+                        {index + 1}
+                      </Text>
+                    </View>
                     <View className="min-w-0 flex-1">
                       <Text className="font-sans-semibold text-lg text-text-primary">
                         {exercise.name}
@@ -420,7 +574,7 @@ const ExerciseDetailScreen = () => {
                     </View>
                   </View>
                   <Pressable
-                    onPress={() => handleDeleteExercise(exercise.id)}
+                    onPress={() => handleDeleteExercise(index)}
                     className="rounded-full border border-white flex items-center justify-center mr-2 p-1"
                   >
                     <SymbolView name="multiply" tintColor="#ffffff" size={10} />
@@ -433,14 +587,19 @@ const ExerciseDetailScreen = () => {
       {selectedWorkoutSession.status === "In progress" &&
         selectedWorkoutSession.exercises.length > 0 && (
           <View className="flex items-center mb-3 rounded-3xl border-2 border-primary bg-background/80 p-4">
-            <View className="flex flex-row w-full justify-between items-center mb-10">
-              <Text className="text-center text-text-primary font-sans-bold text-xl">
-                {exerciseIndex + 1}.{" "}
-                {selectedWorkoutSession.exercises[exerciseIndex].name}
-              </Text>
+            <View className="flex flex-row w-full justify-between items-center mb-8">
+              <View className="flex-1 pr-3">
+                <Text className="text-text-secondary font-sans-medium text-xs mb-1">
+                  Exercise {exerciseIndex + 1} of{" "}
+                  {selectedWorkoutSession.exercises.length}
+                </Text>
+                <Text className="text-text-primary font-sans-bold text-xl">
+                  {selectedWorkoutSession.exercises[exerciseIndex].name}
+                </Text>
+              </View>
 
-              <View className="flex flex-row items-center gap-4 justify-center">
-                <Pressable>
+              <View className="flex flex-row items-center gap-3 justify-center">
+                <Pressable className="w-8 h-8 items-center justify-center active:opacity-60">
                   <SymbolView
                     name="line.3.horizontal"
                     tintColor="#ffffff"
@@ -449,11 +608,8 @@ const ExerciseDetailScreen = () => {
                   />
                 </Pressable>
                 <Pressable
-                  onPress={() =>
-                    handleDeleteExercise(
-                      selectedWorkoutSession.exercises[exerciseIndex].id,
-                    )
-                  }
+                  onPress={() => handleDeleteExercise(exerciseIndex)}
+                  className="w-8 h-8 items-center justify-center active:opacity-60"
                 >
                   <SymbolView
                     name="multiply"
@@ -467,16 +623,18 @@ const ExerciseDetailScreen = () => {
 
             <View className="w-full flex items-center mb-5">
               {/* Header */}
-              <View className="flex flex-row items-center mb-4">
-                <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
-                  Set
+              {/* Header */}
+              <View className="flex flex-row items-center mb-3 px-1">
+                <Text className="flex-1 text-center font-sans-semibold text-text-secondary text-xs">
+                  SET
                 </Text>
-                <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
-                  Weight (kg)
+                <Text className="flex-1 text-center font-sans-semibold text-text-secondary text-xs">
+                  WEIGHT (KG)
                 </Text>
-                <Text className="flex-1 text-center font-sans-semibold text-text-secondary">
-                  Reps
+                <Text className="flex-1 text-center font-sans-semibold text-text-secondary text-xs">
+                  REPS
                 </Text>
+                <View className="w-8" />
               </View>
 
               {/* Rows */}
@@ -489,18 +647,25 @@ const ExerciseDetailScreen = () => {
                   (set, idx) => (
                     <View
                       key={set.id}
-                      className="flex flex-row items-center mb-2"
+                      className={`flex flex-row items-center py-2 px-1 rounded-2xl mb-2 ${
+                        idx % 2 === 0 ? "bg-white/5" : ""
+                      }`}
                     >
-                      <Text className="flex-1 text-center text-white">
-                        {idx + 1}
-                      </Text>
+                      <View className="flex-1 items-center">
+                        <View className="w-6 h-6 rounded-full bg-primary/20 items-center justify-center">
+                          <Text className="text-white font-sans-semibold text-xs">
+                            {idx + 1}
+                          </Text>
+                        </View>
+                      </View>
 
                       <View className="flex-1 items-center">
                         <TextInput
-                          className="w-16 text-text-primary border-2 border-primary rounded-full py-2"
-                          keyboardType="numeric"
+                          className="w-16 text-text-primary border-2 border-primary rounded-full py-2 font-sans-medium"
+                          placeholder="0"
                           placeholderTextColor="#666"
-                          value={set.weight?.toString() ?? ""}
+                          keyboardType="decimal-pad"
+                          value={getDisplayValue(set.id, "weight", set.weight)}
                           onChangeText={(value) =>
                             handleSetValueChange(set.id, "weight", value)
                           }
@@ -510,16 +675,24 @@ const ExerciseDetailScreen = () => {
 
                       <View className="flex-1 items-center">
                         <TextInput
-                          className="w-16 text-white border-2 border-primary rounded-full py-2"
-                          keyboardType="numeric"
+                          className="w-16 text-white border-2 border-primary rounded-full py-2 font-sans-medium"
+                          placeholder="0"
                           placeholderTextColor="#666"
-                          value={set.reps?.toString() ?? ""}
+                          keyboardType="number-pad"
+                          value={getDisplayValue(set.id, "reps", set.reps)}
                           onChangeText={(value) =>
                             handleSetValueChange(set.id, "reps", value)
                           }
                           style={{ textAlign: "center" }}
                         />
                       </View>
+
+                      <Pressable
+                        onPress={() => handleDeleteSet(set.id)}
+                        className="w-8 items-center justify-center active:opacity-60"
+                      >
+                        <SymbolView name="trash" tintColor="#999" size={15} />
+                      </Pressable>
                     </View>
                   ),
                 )}
@@ -528,16 +701,18 @@ const ExerciseDetailScreen = () => {
               {/* Add set button */}
               <Pressable
                 onPress={handleAddSet}
-                className="flex flex-row items-center justify-center gap-1 mt-2 rounded-full w-9/10  bg-primary py-2"
+                className="flex flex-row items-center justify-center gap-2 mt-3 rounded-full w-9/10 border-2 border-dashed border-primary py-3 active:bg-primary/10"
               >
-                <SymbolView name="plus" tintColor="#717171" size={10} />
-                <Text className="text-text-secondary font-sans-semibold">
+                <SymbolView name="plus" tintColor="#ffffff" size={12} />
+                <Text className="text-text-primary font-sans-semibold">
                   Add new set
                 </Text>
               </Pressable>
             </View>
-            <View className="flex flex-row mb-5 items-center justify-items-start gap-4 w-9/10">
-              <Text className="text-text-secondary">Technique:</Text>
+            <View className="flex flex-row mb-5 items-center gap-4 w-9/10">
+              <Text className="text-text-secondary font-sans-medium text-sm">
+                Technique
+              </Text>
               <SelectDropdown
                 data={TECHNIQUES}
                 onSelect={(selectedItem, index) => {
@@ -548,9 +723,9 @@ const ExerciseDetailScreen = () => {
                 }
                 renderButton={(selectedItem, isOpened) => {
                   return (
-                    <View className="flex flex-row items-center justify-center gap-2 px-2 border-2 border-primary py-2 rounded-full">
+                    <View className="flex flex-row items-center justify-center gap-2 px-3 border-2 border-primary py-2 rounded-full">
                       <Text
-                        className={`text-sm ${selectedItem === "Warm-up" ? "text-accent-2" : selectedItem === "Failure" ? "text-accent-1" : "text-text-primary"}`}
+                        className={`text-sm font-sans-medium ${selectedItem === "Warm-up" ? "text-accent-2" : selectedItem === "Failure" ? "text-accent-1" : "text-text-primary"}`}
                       >
                         {(selectedItem && selectedItem) || "Technique"}
                       </Text>
@@ -577,14 +752,18 @@ const ExerciseDetailScreen = () => {
                 dropdownStyle={styles.dropdownMenuStyle}
               />
             </View>
-            <View className="w-9/10 mb-5">
+
+            <View className="w-9/10 mb-6">
+              <Text className="text-text-secondary font-sans-medium text-sm mb-2">
+                Note
+              </Text>
               <TextInput
-                className="w-full text-white border-2 border-primary rounded-2xl p-2"
+                className="w-full text-white border-2 border-primary rounded-2xl p-3"
                 placeholderTextColor="#666"
                 multiline={true}
                 numberOfLines={4}
                 style={{ minHeight: 80, textAlignVertical: "top" }}
-                placeholder="Add some note"
+                placeholder="Add some note about form, difficulty, etc."
                 value={
                   selectedWorkoutSession.exercises[exerciseIndex].note ?? ""
                 }
@@ -592,9 +771,9 @@ const ExerciseDetailScreen = () => {
               />
             </View>
 
-            <View className="flex flex-row justify-between w-full">
+            <View className="flex flex-row justify-between items-center w-full pt-2">
               <Pressable
-                className="flex flex-row items-center gap-1"
+                className="flex flex-row items-center gap-1 w-16 active:opacity-60"
                 disabled={exerciseIndex === 0}
                 onPress={() => setExeriseIndex((prev) => prev - 1)}
               >
@@ -604,7 +783,6 @@ const ExerciseDetailScreen = () => {
                   size={10}
                   weight="bold"
                 />
-
                 <Text
                   className={`font-sans-semibold ${exerciseIndex === 0 ? "text-text-secondary" : "text-text-primary"}`}
                 >
@@ -614,12 +792,13 @@ const ExerciseDetailScreen = () => {
 
               <Pressable
                 onPress={() => handleSaveWorkoutSession()}
-                className="bg-white px-6 py-2 rounded-full"
+                className="bg-white px-8 py-3 rounded-full active:opacity-70"
               >
-                <Text className="font-sans-semibold">Save</Text>
+                <Text className="font-sans-semibold text-base">Save</Text>
               </Pressable>
+
               <Pressable
-                className="flex flex-row items-center gap-1"
+                className="flex flex-row items-center justify-end gap-1 w-16 active:opacity-60"
                 disabled={
                   exerciseIndex === selectedWorkoutSession.exercises.length - 1
                 }
@@ -653,9 +832,16 @@ const ExerciseDetailScreen = () => {
                   className="mb-3 rounded-3xl border-2 border-primary bg-background/80 p-4"
                 >
                   <View className="mb-4 flex flex-row items-center justify-between">
-                    <Text className="text-text-primary font-sans-bold text-xl">
-                      {exercise.name}
-                    </Text>
+                    <View className="flex flex-row items-center gap-2 flex-1">
+                      <SymbolView
+                        name="checkmark.circle.fill"
+                        tintColor="#58c5cc"
+                        size={18}
+                      />
+                      <Text className="text-text-primary font-sans-bold text-xl flex-1">
+                        {exercise.name}
+                      </Text>
+                    </View>
                     {exercise.technique && exercise.technique !== "None" && (
                       <View className="rounded-full border border-primary bg-primary/10 px-3 py-1">
                         <Text
@@ -731,8 +917,9 @@ const ExerciseDetailScreen = () => {
         )}
 
       {selectedWorkoutSession.exercises.length === 0 && (
-        <View className="rounded-3xl border-2 border-primary mb-3 bg-background/70 p-4">
-          <Text className="font-sans-regular text-text-secondary">
+        <View className="rounded-3xl border-2 border-dashed border-primary mb-3 bg-background/70 p-6 items-center">
+          <SymbolView name="dumbbell" tintColor="#666" size={28} />
+          <Text className="font-sans-regular text-text-secondary text-center mt-3">
             No exercises in this workout session. Add one with the button below.
           </Text>
         </View>
