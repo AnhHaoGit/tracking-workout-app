@@ -7,6 +7,7 @@ import InformationOption from "../../../../components/InformationOption";
 import { SignOutButton } from "@/components/SignOutButton";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { useAuth } from "../../../../context/auth";
+import PullToRefreshComponent from "@/components/PullToRefreshComponent";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -15,11 +16,7 @@ const ProfileScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView
-        className="flex-1 px-4"
-        contentContainerStyle={{ paddingBottom: 120, alignItems: "center" }}
-        showsVerticalScrollIndicator={false}
-      >
+      <PullToRefreshComponent>
         {/* Avatar and name section */}
         <View className="mt-4 w-full items-center gap-4">
           <View className="aspect-square h-28 items-center justify-center rounded-full border-2 border-primary bg-background/80">
@@ -75,7 +72,7 @@ const ProfileScreen = () => {
             <DeleteAccountButton />
           </View>
         </View>
-      </ScrollView>
+      </PullToRefreshComponent>
     </SafeAreaView>
   );
 };

@@ -1,6 +1,9 @@
+import PullToRefreshComponent from "@/components/PullToRefreshComponent";
 import { BASE_URL } from "@/constants/constants";
-import { useAuth } from "@/context/auth";
 import { WorkoutSession } from "@/constants/type";
+import { useAuth } from "@/context/auth";
+import { useWorkoutSessions } from "@/context/workout-sessions";
+import showToast from "@/utils/toast";
 import { Link, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { styled } from "nativewind";
@@ -10,17 +13,15 @@ import {
   Dimensions,
   InteractionManager,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-import { useWorkoutSessions } from "@/context/workout-sessions";
-import showToast from "@/utils/toast";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
 const screenWidth = Dimensions.get("window").width;
+const calendarCellWidth = (screenWidth - 64) / 7;
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -259,7 +260,7 @@ const Calendar = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
+      <PullToRefreshComponent>
         <View className="flex flex-row justify-between items-center">
           <Text className="text-3xl font-sans-bold text-text-primary">
             Calendar
@@ -415,18 +416,17 @@ const Calendar = () => {
                   <Text className="font-sans-bold text-lg text-text-primary mb-3">
                     {monthName}
                   </Text>
-                  <View className="flex-row justify-between mb-2">
+                  <View className="mb-2 flex-row">
                     {weekDays.map((d) => (
-                      <Text
+                      <View
                         key={d}
-                        className="text-xs font-sans-semibold text-text-secondary"
-                        style={{
-                          width: (screenWidth - 64) / 7,
-                          textAlign: "center",
-                        }}
+                        style={{ width: calendarCellWidth }}
+                        className="items-center"
                       >
-                        {d}
-                      </Text>
+                        <Text className="text-xs font-sans-semibold text-text-secondary">
+                          {d}
+                        </Text>
+                      </View>
                     ))}
                   </View>
 
@@ -443,7 +443,7 @@ const Calendar = () => {
                           return (
                             <View
                               key={j}
-                              style={{ width: (screenWidth - 64) / 7 }}
+                              style={{ width: calendarCellWidth }}
                               className="items-center border flex justify-center"
                             >
                               {day ? (
@@ -485,7 +485,7 @@ const Calendar = () => {
             )}
           </View>
         )}
-      </ScrollView>
+      </PullToRefreshComponent>
     </SafeAreaView>
   );
 };

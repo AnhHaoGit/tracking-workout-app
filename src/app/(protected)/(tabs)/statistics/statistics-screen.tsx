@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable} from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
 import { useRouter, Link } from "expo-router";
@@ -7,6 +7,7 @@ import { SymbolView } from "expo-symbols";
 import { useAuth } from "@/context/auth";
 import { useWorkoutSessions } from "@/context/workout-sessions";
 import WeeklyStreak from "@/components/WeeklyStreak";
+import PullToRefreshComponent from "@/components/PullToRefreshComponent";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -54,11 +55,7 @@ const StatisticsScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView
-        className="flex-1 px-4 py-4"
-        contentContainerStyle={{ paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
-      >
+      <PullToRefreshComponent>
         <Text className="mb-5 font-sans-bold text-3xl text-text-primary">
           Statistics
         </Text>
@@ -101,7 +98,7 @@ const StatisticsScreen = () => {
             </Pressable>
           </Link>
         ))}
-      </ScrollView>
+      </PullToRefreshComponent>
     </SafeAreaView>
   );
 };

@@ -98,7 +98,7 @@ const RepsWeight = () => {
   return (
     <View className="flex-1 bg-background">
       <ScrollView
-        className="flex-1 px-4 py-4"
+        className="px-4 py-4"
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >

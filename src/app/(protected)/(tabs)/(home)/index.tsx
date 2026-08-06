@@ -1,3 +1,4 @@
+import PullToRefreshComponent from "@/components/PullToRefreshComponent";
 import WeeklyStreak from "@/components/WeeklyStreak";
 import { BASE_URL } from "@/constants/constants";
 import { useUser } from "@/context/user";
@@ -7,15 +8,7 @@ import { Link, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { styled } from "nativewind";
 import React from "react";
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../../../context/auth";
 
@@ -27,46 +20,6 @@ const HomeScreen = () => {
   const { userData, updateUserData } = useUser();
   const { workoutSessions, saveWorkoutSessions, deleteWorkoutSession } =
     useWorkoutSessions();
-
-  const [refreshing, setRefreshing] = React.useState(false);
-
-  const refreshData = React.useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const [userResponse, sessionsResponse] = await Promise.all([
-        fetchWithAuth(`${BASE_URL}/api/database/user`, { method: "GET" }),
-        fetchWithAuth(`${BASE_URL}/api/database/workout-sessions`, {
-          method: "GET",
-        }),
-      ]);
-
-      if (userResponse.ok) {
-        const userJson = await userResponse.json();
-        updateUserData(userJson);
-      }
-
-      if (sessionsResponse.ok) {
-        const sessionsJson = await sessionsResponse.json();
-        saveWorkoutSessions(sessionsJson);
-      }
-
-      if (!userResponse.ok || !sessionsResponse.ok) {
-        throw new Error("Failed to refresh data");
-      }
-    } catch (error) {
-      console.error("Failed to refresh data", error);
-      showToast(
-        "errorToast",
-        "Failed to refresh data. Check your internet connection.",
-      );
-    }
-  }, [fetchWithAuth, saveWorkoutSessions, updateUserData, user]);
-
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    refreshData().finally(() => setRefreshing(false));
-  }, [refreshData]);
 
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
@@ -195,24 +148,8 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 w-full bg-background">
-      <ScrollView
-        contentContainerStyle={{
-          paddingBottom: 180,
-          display: "flex",
-          backgroundColor: "#000000",
-          alignItems: "center",
-          flexGrow: 1,
-        }}
-        className="p-4"
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#ffffff"
-          />
-        }
-      >
-        <View className="h-1/7 w-full flex flex-row justify-between items-center mb-6">
+      <PullToRefreshComponent>
+        <View className="h-1/4 w-full flex flex-row justify-between items-center mb-6">
           <View className="flex flex-row items-center gap-4">
             <View className="aspect-square h-9/10 flex justify-center items-center bg-background border-primary border-2 rounded-full">
               <View className="w-9/10 h-9/10 flex justify-center items-center bg-primary border-2 rounded-full">
@@ -306,7 +243,7 @@ const HomeScreen = () => {
             ))
           )}
         </View>
-      </ScrollView>
+      </PullToRefreshComponent>
     </SafeAreaView>
   );
 };

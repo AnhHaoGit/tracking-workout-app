@@ -1,7 +1,10 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, Dimensions } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { StatisticsDataPoint } from "@/constants/type";
+
+const screenWidth = Dimensions.get("window").width;
+
 
 const COLORS = {
   background: "#000000",
@@ -48,7 +51,7 @@ const MultiLineChartComponent = ({ data, unit }: Props) => {
       <LineChart
         dataSet={dataSet}
         height={CHART_HEIGHT}
-        width={300}
+        width={screenWidth * 0.8}
         initialSpacing={16}
         endSpacing={16}
         spacing={64}
