@@ -1,9 +1,9 @@
 import NetInfo from "@react-native-community/netinfo";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import { styled } from "nativewind";
 import React from "react";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
-import { styled } from "nativewind";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 const SafeAreaView = styled(RNSafeAreaView);
@@ -44,14 +44,17 @@ const NoConnectionScreen = () => {
 
   const handleRetry = async () => {
     setIsRetrying(true);
-    const state = await NetInfo.fetch();
-    const connected =
-      !!state.isConnected && state.isInternetReachable !== false;
 
-    setIsRetrying(false);
+    try {
+      const state = await NetInfo.fetch();
+      const connected =
+        !!state.isConnected && state.isInternetReachable !== false;
 
-    if (connected) {
-      router.back();
+      if (connected) {
+        router.back();
+      }
+    } finally {
+      setIsRetrying(false);
     }
   };
 
