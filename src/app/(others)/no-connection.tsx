@@ -3,7 +3,10 @@ import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import React from "react";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { styled } from "nativewind";
+import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
+
+const SafeAreaView = styled(RNSafeAreaView);
 
 const NoConnectionScreen = () => {
   const router = useRouter();
@@ -54,8 +57,7 @@ const NoConnectionScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <View className="flex-1 items-center justify-center px-6">
-        {/* Signature: tín hiệu radar đang tìm sóng, lặp lại vô hạn */}
+      <View className="flex-1 items-center justify-center px-6 bg-background">
         <View className="items-center justify-center mb-8">
           <Animated.View
             style={{

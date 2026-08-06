@@ -1,5 +1,8 @@
+import WeeklyStreak from "@/components/WeeklyStreak";
 import { BASE_URL } from "@/constants/constants";
 import { useUser } from "@/context/user";
+import { useWorkoutSessions } from "@/context/workout-sessions";
+import showToast from "@/utils/toast";
 import { Link, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { styled } from "nativewind";
@@ -8,15 +11,13 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../../../context/auth";
-import { useWorkoutSessions } from "@/context/workout-sessions";
-import showToast from "@/utils/toast";
-import WeeklyStreak from "@/components/WeeklyStreak";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -26,6 +27,46 @@ const HomeScreen = () => {
   const { userData, updateUserData } = useUser();
   const { workoutSessions, saveWorkoutSessions, deleteWorkoutSession } =
     useWorkoutSessions();
+
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const refreshData = React.useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const [userResponse, sessionsResponse] = await Promise.all([
+        fetchWithAuth(`${BASE_URL}/api/database/user`, { method: "GET" }),
+        fetchWithAuth(`${BASE_URL}/api/database/workout-sessions`, {
+          method: "GET",
+        }),
+      ]);
+
+      if (userResponse.ok) {
+        const userJson = await userResponse.json();
+        updateUserData(userJson);
+      }
+
+      if (sessionsResponse.ok) {
+        const sessionsJson = await sessionsResponse.json();
+        saveWorkoutSessions(sessionsJson);
+      }
+
+      if (!userResponse.ok || !sessionsResponse.ok) {
+        throw new Error("Failed to refresh data");
+      }
+    } catch (error) {
+      console.error("Failed to refresh data", error);
+      showToast(
+        "errorToast",
+        "Failed to refresh data. Check your internet connection.",
+      );
+    }
+  }, [fetchWithAuth, saveWorkoutSessions, updateUserData, user]);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    refreshData().finally(() => setRefreshing(false));
+  }, [refreshData]);
 
   React.useLayoutEffect(() => {
     if (!isLoading && !user) {
@@ -163,6 +204,13 @@ const HomeScreen = () => {
           flexGrow: 1,
         }}
         className="p-4"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#ffffff"
+          />
+        }
       >
         <View className="h-1/7 w-full flex flex-row justify-between items-center mb-6">
           <View className="flex flex-row items-center gap-4">
