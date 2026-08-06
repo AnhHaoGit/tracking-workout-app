@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { Dimensions, Text, View } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 
 import { StatisticsDataPoint } from "@/constants/type";
@@ -16,6 +16,7 @@ const COLORS = {
 const CHART_HEIGHT = 220;
 const INITIAL_SPACING = 16;
 const SPACING = 64;
+const screenWidth = Dimensions.get("window").width;
 
 const VolumeLineChart = ({
   data,
@@ -34,7 +35,7 @@ const VolumeLineChart = ({
       <LineChart
         data={data}
         height={CHART_HEIGHT}
-        width={300}
+        width={screenWidth * 0.8}
         initialSpacing={INITIAL_SPACING}
         endSpacing={16}
         spacing={SPACING}
@@ -86,7 +87,7 @@ const VolumeLineChart = ({
           paddingVertical: 5,
           alignItems: "center",
           opacity: focusedItem ? 1 : 0,
-          gap: 4
+          gap: 4,
         }}
       >
         <Text style={{ color: COLORS.textSecondary, fontSize: 11 }}>

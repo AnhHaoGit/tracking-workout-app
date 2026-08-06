@@ -347,8 +347,8 @@ const AddWorkoutSession = () => {
 
   return (
     <ScrollView
-      className="flex-1 px-4 py-4 bg-background"
-      contentContainerStyle={{ paddingBottom: 120 }}
+      className="px-4 py-4 bg-background"
+      contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
     >
       <Text className="mb-2 font-sans-bold text-3xl text-text-primary">
         Create workout session
